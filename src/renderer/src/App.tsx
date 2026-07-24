@@ -1,17 +1,9 @@
-import { useState } from 'react'
 import Versions from './components/Versions'
 import electronLogo from './assets/electron.svg'
 import PostureCamera from './posture/PostureCamera'
 
 function App(): React.JSX.Element {
   const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
-
-  const [blur, setBlur] = useState(0)
-  const handleBlurChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
-    const level = Number(event.target.value)
-    setBlur(level)
-    window.electron.ipcRenderer.send('overlay:set-blur', level)
-  }
 
   return (
     <>
@@ -35,19 +27,6 @@ function App(): React.JSX.Element {
             Send IPC
           </a>
         </div>
-      </div>
-      <div style={{ marginTop: 24 }}>
-        <label htmlFor="blur-test">Overlay blur test: {blur}px</label>
-        <br />
-        <input
-          id="blur-test"
-          type="range"
-          min={0}
-          max={15}
-          step={1}
-          value={blur}
-          onChange={handleBlurChange}
-        />
       </div>
       <PostureCamera />
       <Versions></Versions>
