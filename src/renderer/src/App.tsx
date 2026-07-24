@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Versions from './components/Versions'
 import electronLogo from './assets/electron.svg'
+import PostureCamera from './posture/PostureCamera'
 
 function App(): React.JSX.Element {
   const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
@@ -48,6 +49,7 @@ function App(): React.JSX.Element {
           onChange={handleBlurChange}
         />
       </div>
+      <PostureCamera />
       <Versions></Versions>
     </>
   )
