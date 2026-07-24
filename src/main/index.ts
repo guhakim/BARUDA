@@ -3,6 +3,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { createOverlayWindows, setOverlayBlur } from './overlayWindow'
+import { recordPostureSample } from './postureStore'
 
 function createWindow(): void {
   // Create the browser window.
@@ -54,6 +55,10 @@ app.whenReady().then(() => {
   ipcMain.on('ping', () => console.log('pong'))
 
   ipcMain.on('overlay:set-blur', (_event, level: number) => setOverlayBlur(level))
+
+  ipcMain.on('posture:report', (_event, payload: { score: number; timestamp: number }) =>
+    recordPostureSample(payload.score, payload.timestamp)
+  )
 
   createOverlayWindows()
   createWindow()

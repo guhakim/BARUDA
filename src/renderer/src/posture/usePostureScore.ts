@@ -45,6 +45,7 @@ export function usePostureScore(
     setScore(smoothed)
     setBlurPx(nextBlurPx)
     window.electron.ipcRenderer.send('overlay:set-blur', nextBlurPx)
+    window.electron.ipcRenderer.send('posture:report', { score: smoothed, timestamp: Date.now() })
   }, [landmarks, baseline, sensitivity])
 
   function registerBaseline(): void {
