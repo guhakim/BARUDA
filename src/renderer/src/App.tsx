@@ -1,6 +1,8 @@
 import Versions from './components/Versions'
 import electronLogo from './assets/electron.svg'
 import PostureCamera from './posture/PostureCamera'
+import AuthGate from './auth/AuthGate'
+import BillingPanel from './billing/BillingPanel'
 
 function App(): React.JSX.Element {
   const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
@@ -28,7 +30,14 @@ function App(): React.JSX.Element {
           </a>
         </div>
       </div>
-      <PostureCamera />
+      <AuthGate>
+        {(session) => (
+          <>
+            <PostureCamera />
+            <BillingPanel session={session} />
+          </>
+        )}
+      </AuthGate>
       <Versions></Versions>
     </>
   )

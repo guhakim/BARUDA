@@ -8,13 +8,27 @@
 
 - Electron + React + TypeScript (electron-vite)
 - MediaPipe Face Landmarker (로컬 웹캠 랜드마크 추출)
+- SQLite (로컬 자세 타임라인 저장)
+- Supabase Auth + Stripe 구독 (클라우드 백엔드, `backend/`)
 
 ## 개발
 
 ```bash
 npm install
+cp .env.example .env   # Supabase URL/anon key, 백엔드 주소 채우기
 npm run dev
 ```
+
+## 클라우드 백엔드 (Supabase + Stripe)
+
+구독 결제는 `backend/`의 별도 NestJS 서버가 담당합니다. Electron 앱은 Supabase anon key로 로그인/구독 상태 조회(RLS로 본인 행만 접근)까지만 하고, Stripe 시크릿 키와 Supabase 서비스 롤 키가 필요한 작업(체크아웃 세션 생성, 웹훅 처리)은 전부 백엔드가 담당합니다.
+
+1. Supabase 프로젝트 생성 후 `backend/supabase/migrations/0001_init.sql`을 SQL Editor에서 실행 (profiles/subscriptions 테이블 + RLS)
+2. `backend/.env.example`을 `backend/.env`로 복사하고 Supabase 서비스 롤 키, Stripe 시크릿 키·가격 ID를 채운 뒤 `npm install && npm run start:dev`
+3. Stripe 대시보드에서 웹훅 엔드포인트를 `<백엔드 주소>/webhooks/stripe`로 등록하고, 서명 시크릿을 `STRIPE_WEBHOOK_SECRET`에 채우기
+4. 루트 `.env`의 `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` / `VITE_BACKEND_URL`을 채우면 앱에서 로그인·구독 시작 버튼이 동작
+
+> 현재 이 저장소에는 실제 Supabase/Stripe 키가 없어 위 흐름은 스캐폴딩 상태입니다 — 키를 채우기 전에는 로그인/결제가 동작하지 않습니다.
 
 ## 빌드
 
@@ -31,6 +45,9 @@ npm run build:linux # Linux
 - `src/preload` — 렌더러에 노출되는 IPC 브릿지
 - `src/renderer` — 설정 창(메인 윈도우) 및 오버레이 창 렌더러
   - `src/renderer/src/posture` — MediaPipe 기반 자세 인식 로직
+  - `src/renderer/src/auth` — Supabase 로그인/세션 관리
+  - `src/renderer/src/billing` — 구독 상태 조회 및 Stripe Checkout 시작
+- `backend` — Supabase 서비스 롤 / Stripe 시크릿 키가 필요한 작업 전용 NestJS API
 
 ## 문서
 
