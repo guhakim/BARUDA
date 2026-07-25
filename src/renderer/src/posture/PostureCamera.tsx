@@ -22,13 +22,19 @@ function HealthBar({ goodness }: { goodness: number }): React.JSX.Element {
   )
 }
 
-function GuideOutline(): React.JSX.Element {
+const PERFECT_THRESHOLD = 95
+
+function GuideOutline({ perfect }: { perfect: boolean }): React.JSX.Element {
   return (
-    <svg className="guide-outline" viewBox="0 0 300 225" preserveAspectRatio="none">
+    <svg
+      className={`guide-outline ${perfect ? 'perfect' : ''}`}
+      viewBox="0 0 300 225"
+      preserveAspectRatio="none"
+    >
       <path
         d="M55,225 C55,155 85,125 108,103 C90,75 100,20 150,20 C200,20 210,75 192,103 C215,125 245,155 245,225"
         fill="none"
-        stroke="white"
+        stroke={perfect ? '#2f9e6e' : 'white'}
         strokeWidth={4}
         strokeLinecap="round"
       />
@@ -42,12 +48,13 @@ function PostureCamera(): React.JSX.Element {
   const { baseline, score, registerBaseline } = usePostureScore(landmarks, angles)
   const goodness = 100 - score
   const ready = landmarks || angles
+  const isPerfect = Boolean(ready) && goodness >= PERFECT_THRESHOLD
 
   return (
     <section className="card">
-      <div className="camera-frame">
+      <div className={`camera-frame ${isPerfect ? 'perfect' : ''}`}>
         <video ref={videoRef} muted playsInline />
-        <GuideOutline />
+        <GuideOutline perfect={isPerfect} />
         <span className={`dot ${status}`} />
       </div>
 

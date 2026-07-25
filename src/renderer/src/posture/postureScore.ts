@@ -62,31 +62,29 @@ export function scoreToBlurPx(score: number, maxBlurPx = 15): number {
   return Math.round((score / 100) * maxBlurPx)
 }
 
-// Simplified RULA/REBA-style neck/trunk flexion bands (angle vs. vertical,
-// in degrees) mapped onto the same 0-100 scale as the calibration-based
-// score. Unlike computePostureScore, this needs no personal baseline —
-// it works off absolute posture angles from MediaPipe Pose Landmarker.
-function angleBandScore(angleDeg: number, bands: [number, number][]): number {
-  for (const [maxAngle, score] of bands) {
-    if (angleDeg <= maxAngle) return score
-  }
-  return 100
+// Simplified RULA/REBA-style neck/trunk flexion (angle vs. vertical, in
+// degrees) mapped onto the same 0-100 scale as the calibration-based score.
+// Unlike computePostureScore, this needs no personal baseline — it works
+// off absolute posture angles from MediaPipe Pose Landmarker.
+//
+// This is a continuous ramp rather than discrete bands: a step function
+// made the score visibly jump between fixed values as the angle crossed a
+// boundary, even with EMA smoothing on top, which read as random jitter
+// instead of a stable number settling toward 0.
+function angleToScore(angleDeg: number, goodAngle: number, badAngle: number): number {
+  if (angleDeg <= goodAngle) return 0
+  if (angleDeg >= badAngle) return 100
+  return ((angleDeg - goodAngle) / (badAngle - goodAngle)) * 100
 }
 
-const NECK_BANDS: [number, number][] = [
-  [10, 0],
-  [20, 35],
-  [35, 65]
-]
-const TRUNK_BANDS: [number, number][] = [
-  [10, 0],
-  [20, 35],
-  [40, 65]
-]
+const NECK_GOOD_ANGLE = 8
+const NECK_BAD_ANGLE = 35
+const TRUNK_GOOD_ANGLE = 8
+const TRUNK_BAD_ANGLE = 40
 
 export function computeAbsolutePostureScore(neckAngleDeg: number, trunkAngleDeg: number): number {
   return Math.max(
-    angleBandScore(neckAngleDeg, NECK_BANDS),
-    angleBandScore(trunkAngleDeg, TRUNK_BANDS)
+    angleToScore(neckAngleDeg, NECK_GOOD_ANGLE, NECK_BAD_ANGLE),
+    angleToScore(trunkAngleDeg, TRUNK_GOOD_ANGLE, TRUNK_BAD_ANGLE)
   )
 }
