@@ -138,13 +138,13 @@
 }
 
 .status-btn {
-  width: 64px;
-  height: 64px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   border: 1px solid var(--surface-border);
   background: var(--surface);
   box-shadow: var(--shadow);
-  font-size: 28px;
+  font-size: 24px;
   line-height: 1;
   cursor: pointer;
   transition: transform 150ms;
@@ -160,9 +160,12 @@
 }
 
 /* Once a baseline exists the button is a read-only status indicator, not
-   a control — keep it fully visible (no dimming) and non-interactive. */
-.status-btn-static:disabled {
-  opacity: 1;
+   a control. Using the native `disabled` attribute made Chromium render
+   the emoji desaturated/pale even at opacity:1, so instead this stays a
+   plain (non-disabled) button with pointer-events turned off — full
+   color, but clicks and hover no longer do anything. */
+.status-btn-static {
+  pointer-events: none;
   cursor: default;
 }
 
