@@ -1,4 +1,3 @@
-import type { SubscriptionStatus } from '../billing/useSubscriptionStatus'
 import { usePostureLogs, type DailyPostureSummary } from './usePostureLogs'
 
 const CHART_HEIGHT = 96
@@ -45,22 +44,8 @@ function WeeklyChart({ days }: { days: DailyPostureSummary[] }): React.JSX.Eleme
   )
 }
 
-interface DashboardProps {
-  subscriptionStatus: SubscriptionStatus
-}
-
-function Dashboard({ subscriptionStatus }: DashboardProps): React.JSX.Element {
+function Dashboard(): React.JSX.Element {
   const { days, loading } = usePostureLogs()
-  const isPremium = subscriptionStatus === 'active'
-
-  if (!isPremium) {
-    return (
-      <section className="card chart-empty">
-        <span>🔒</span>
-        <span>주간 통계는 프리미엄 기능이에요</span>
-      </section>
-    )
-  }
 
   if (loading || days.length === 0) {
     return (

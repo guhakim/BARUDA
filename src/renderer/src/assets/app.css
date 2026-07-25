@@ -1,23 +1,25 @@
 :root {
-  --accent: #4f9d69;
-  --accent-soft: rgba(79, 157, 105, 0.16);
+  --accent: #5b5bf5;
+  --accent-soft: rgba(91, 91, 245, 0.12);
   --danger: #e0736b;
-  --surface: rgba(255, 255, 255, 0.04);
-  --surface-border: rgba(255, 255, 255, 0.08);
-  --radius: 16px;
+  --surface: #ffffff;
+  --surface-border: #ececee;
+  --shadow: 0 1px 2px rgba(20, 20, 30, 0.04), 0 8px 24px rgba(20, 20, 30, 0.06);
+  --radius: 20px;
 }
 
 .app {
   width: 100%;
   max-width: 420px;
-  padding: 32px 28px 40px;
+  padding: 40px 28px 48px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
 }
 
 .app-header {
   text-align: center;
+  margin-bottom: 4px;
 }
 
 .app-header h1 {
@@ -35,8 +37,9 @@
 .card {
   background: var(--surface);
   border: 1px solid var(--surface-border);
+  box-shadow: var(--shadow);
   border-radius: var(--radius);
-  padding: 20px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -49,7 +52,7 @@
   height: 160px;
   border-radius: 50%;
   overflow: hidden;
-  background: var(--ev-c-black-mute);
+  background: var(--ev-c-white-mute);
   border: 3px solid var(--surface-border);
 }
 
@@ -67,11 +70,11 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  border: 2px solid var(--ev-c-black-soft);
+  border: 2px solid var(--surface);
 }
 
 .dot.ready {
-  background: var(--accent);
+  background: #2f9e6e;
 }
 .dot.loading {
   background: #d9b45c;
@@ -128,11 +131,11 @@
 
 .btn-primary {
   background: var(--accent);
-  color: #0b1a10;
+  color: #ffffff;
 }
 
 .btn-primary:hover {
-  background: #5cb279;
+  background: #4646d1;
 }
 
 .btn-ghost {
@@ -154,7 +157,7 @@
   font-weight: 600;
   padding: 4px 10px;
   border-radius: 999px;
-  background: var(--surface-border);
+  background: var(--ev-c-white-mute);
   color: var(--ev-c-text-2);
 }
 
@@ -174,7 +177,7 @@
   padding: 10px 14px;
   border-radius: 10px;
   border: 1px solid var(--surface-border);
-  background: var(--ev-c-black-mute);
+  background: var(--ev-c-white-soft);
   color: var(--ev-c-text-1);
   font-size: 14px;
 }
