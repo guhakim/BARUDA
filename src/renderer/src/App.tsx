@@ -3,6 +3,21 @@ import electronLogo from './assets/electron.svg'
 import PostureCamera from './posture/PostureCamera'
 import AuthGate from './auth/AuthGate'
 import BillingPanel from './billing/BillingPanel'
+import Dashboard from './dashboard/Dashboard'
+import { useSubscriptionStatus } from './billing/useSubscriptionStatus'
+import type { Session } from '@supabase/supabase-js'
+
+function AuthenticatedApp({ session }: { session: Session }): React.JSX.Element {
+  const { status, loading } = useSubscriptionStatus(session)
+
+  return (
+    <>
+      <PostureCamera />
+      <BillingPanel session={session} status={status} loading={loading} />
+      <Dashboard subscriptionStatus={status} />
+    </>
+  )
+}
 
 function App(): React.JSX.Element {
   const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
@@ -30,14 +45,7 @@ function App(): React.JSX.Element {
           </a>
         </div>
       </div>
-      <AuthGate>
-        {(session) => (
-          <>
-            <PostureCamera />
-            <BillingPanel session={session} />
-          </>
-        )}
-      </AuthGate>
+      <AuthGate>{(session) => <AuthenticatedApp session={session} />}</AuthGate>
       <Versions></Versions>
     </>
   )

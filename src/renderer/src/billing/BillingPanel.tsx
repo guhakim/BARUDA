@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { useSubscriptionStatus } from './useSubscriptionStatus'
+import type { SubscriptionStatus } from './useSubscriptionStatus'
 
 interface BillingPanelProps {
   session: Session
+  status: SubscriptionStatus
+  loading: boolean
 }
 
-function BillingPanel({ session }: BillingPanelProps): React.JSX.Element {
-  const { status, loading } = useSubscriptionStatus(session)
+function BillingPanel({ session, status, loading }: BillingPanelProps): React.JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [redirecting, setRedirecting] = useState(false)
 

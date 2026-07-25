@@ -3,7 +3,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { createOverlayWindows, setOverlayBlur } from './overlayWindow'
-import { recordPostureSample } from './postureStore'
+import { getRecentPostureLogs, recordPostureSample } from './postureStore'
 
 function createWindow(): void {
   // Create the browser window.
@@ -59,6 +59,8 @@ app.whenReady().then(() => {
   ipcMain.on('posture:report', (_event, payload: { score: number; timestamp: number }) =>
     recordPostureSample(payload.score, payload.timestamp)
   )
+
+  ipcMain.handle('posture:get-logs', () => getRecentPostureLogs())
 
   createOverlayWindows()
   createWindow()
