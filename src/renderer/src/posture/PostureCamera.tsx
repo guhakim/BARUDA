@@ -1,6 +1,7 @@
 import { useFaceLandmarker } from './useFaceLandmarker'
 import { usePoseLandmarker } from './usePoseLandmarker'
 import { usePostureScore } from './usePostureScore'
+import { usePostureStreak } from './usePostureStreak'
 
 function statusEmoji(goodness: number): string {
   if (goodness >= 70) return '👍'
@@ -67,6 +68,62 @@ function GuideOutline({
   )
 }
 
+function formatStreak(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+const STREAK_RING_RADIUS = 30
+const STREAK_RING_CIRCUMFERENCE = 2 * Math.PI * STREAK_RING_RADIUS
+
+// One full lap of the ring per minute of sustained good posture — a small,
+// satisfying loop instead of a bar that just fills up once and stalls.
+function PointsCard({
+  streakSeconds,
+  totalPoints
+}: {
+  streakSeconds: number
+  totalPoints: number
+}): React.JSX.Element {
+  const lapProgress = (streakSeconds % 60) / 60
+  const offset = STREAK_RING_CIRCUMFERENCE * (1 - lapProgress)
+  const active = streakSeconds > 0
+
+  return (
+    <section className="card points-card">
+      <div className="points-row">
+        <div className="streak-ring">
+          <svg width={72} height={72}>
+            <defs>
+              <linearGradient id="streak-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#2f9e6e" />
+                <stop offset="100%" stopColor="#8a5bf5" />
+              </linearGradient>
+            </defs>
+            <circle cx={36} cy={36} r={STREAK_RING_RADIUS} className="streak-ring-track" />
+            <circle
+              cx={36}
+              cy={36}
+              r={STREAK_RING_RADIUS}
+              className={`streak-ring-fill ${active ? 'active' : ''}`}
+              strokeDasharray={STREAK_RING_CIRCUMFERENCE}
+              strokeDashoffset={offset}
+            />
+          </svg>
+          <span className="streak-ring-value">{formatStreak(streakSeconds)}</span>
+        </div>
+
+        <div className="points-total">
+          <span className="points-total-value">{totalPoints.toLocaleString()}</span>
+          <span className="points-total-label">✨ 포인트</span>
+        </div>
+      </div>
+      <p className="hint">바른 자세를 유지할수록 포인트가 쌓여요</p>
+    </section>
+  )
+}
+
 function PostureCamera(): React.JSX.Element {
   const { videoRef, landmarks, status, error } = useFaceLandmarker()
   const { angles } = usePoseLandmarker(videoRef)
@@ -74,33 +131,38 @@ function PostureCamera(): React.JSX.Element {
   const goodness = 100 - score
   const tracking = Boolean(baseline) && (Boolean(landmarks) || Boolean(angles))
   const isPerfect = tracking && goodness >= PERFECT_THRESHOLD
+  const { streakSeconds, totalPoints } = usePostureStreak(goodness, tracking)
 
   return (
-    <section className="card">
-      <div className={`camera-frame ${isPerfect ? 'perfect' : ''}`}>
-        <video ref={videoRef} muted playsInline />
-        <GuideOutline goodness={tracking ? goodness : 0} perfect={isPerfect} />
-        <span className={`dot ${status}`} />
-      </div>
+    <>
+      <section className="card">
+        <div className={`camera-frame ${isPerfect ? 'perfect' : ''}`}>
+          <video ref={videoRef} muted playsInline />
+          <GuideOutline goodness={tracking ? goodness : 0} perfect={isPerfect} />
+          <span className={`dot ${status}`} />
+        </div>
 
-      <button
-        type="button"
-        className="status-btn"
-        onClick={registerBaseline}
-        disabled={!landmarks}
-        title={baseline ? '기준점 다시 등록' : '기준점 등록'}
-      >
-        {error ? '⚠️' : tracking ? statusEmoji(goodness) : '📍'}
-      </button>
+        <button
+          type="button"
+          className="status-btn"
+          onClick={registerBaseline}
+          disabled={!landmarks}
+          title={baseline ? '기준점 다시 등록' : '기준점 등록'}
+        >
+          {error ? '⚠️' : tracking ? statusEmoji(goodness) : '📍'}
+        </button>
 
-      {error ? (
-        <p className="error-text">카메라를 사용할 수 없습니다</p>
-      ) : tracking ? (
-        <HealthBar goodness={goodness} />
-      ) : (
-        <p className="hint">바른 자세로 앉은 뒤 버튼을 눌러 등록하세요</p>
-      )}
-    </section>
+        {error ? (
+          <p className="error-text">카메라를 사용할 수 없습니다</p>
+        ) : tracking ? (
+          <HealthBar goodness={goodness} />
+        ) : (
+          <p className="hint">바른 자세로 앉은 뒤 버튼을 눌러 등록하세요</p>
+        )}
+      </section>
+
+      {tracking && <PointsCard streakSeconds={streakSeconds} totalPoints={totalPoints} />}
+    </>
   )
 }
 
