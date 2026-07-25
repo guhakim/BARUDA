@@ -144,10 +144,10 @@ function PostureCamera(): React.JSX.Element {
 
         <button
           type="button"
-          className="status-btn"
-          onClick={registerBaseline}
-          disabled={!landmarks}
-          title={baseline ? '기준점 다시 등록' : '기준점 등록'}
+          className={`status-btn ${baseline ? 'status-btn-static' : ''}`}
+          onClick={baseline ? undefined : registerBaseline}
+          disabled={!landmarks || Boolean(baseline)}
+          title={baseline ? '현재 자세 상태' : '기준점 등록'}
         >
           {error ? '⚠️' : tracking ? statusEmoji(goodness) : '📍'}
         </button>

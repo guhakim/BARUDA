@@ -159,6 +159,17 @@
   cursor: default;
 }
 
+/* Once a baseline exists the button is a read-only status indicator, not
+   a control — keep it fully visible (no dimming) and non-interactive. */
+.status-btn-static:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.status-btn-static:hover {
+  transform: none;
+}
+
 .health-bar {
   width: 100%;
   display: flex;
