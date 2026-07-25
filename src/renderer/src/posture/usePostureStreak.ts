@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 const TOTAL_POINTS_KEY = 'baruda:total-points'
 const GOOD_THRESHOLD = 85
-const POINTS_PER_SECOND = 1
+const SECONDS_PER_POINT = 30
 
 function loadTotalPoints(): number {
   const raw = localStorage.getItem(TOTAL_POINTS_KEY)
@@ -12,8 +12,9 @@ function loadTotalPoints(): number {
 
 // Rewards sustained good posture rather than an instantaneous score: every
 // second the (smoothed) goodness stays at/above GOOD_THRESHOLD, the streak
-// timer and the running point total both tick up. Dropping below the
-// threshold resets the streak, but never claws back points already earned.
+// timer ticks up, and every SECONDS_PER_POINT of unbroken streak earns one
+// point. Dropping below the threshold resets the streak, but never claws
+// back points already earned.
 export function usePostureStreak(
   goodness: number,
   tracking: boolean
@@ -34,10 +35,15 @@ export function usePostureStreak(
         setStreakSeconds(0)
         return
       }
-      setStreakSeconds((s) => s + 1)
-      setTotalPoints((p) => {
-        const next = p + POINTS_PER_SECOND
-        localStorage.setItem(TOTAL_POINTS_KEY, String(next))
+      setStreakSeconds((s) => {
+        const next = s + 1
+        if (next % SECONDS_PER_POINT === 0) {
+          setTotalPoints((p) => {
+            const nextPoints = p + 1
+            localStorage.setItem(TOTAL_POINTS_KEY, String(nextPoints))
+            return nextPoints
+          })
+        }
         return next
       })
     }, 1000)
