@@ -22,6 +22,20 @@ function HealthBar({ goodness }: { goodness: number }): React.JSX.Element {
   )
 }
 
+function GuideOutline(): React.JSX.Element {
+  return (
+    <svg className="guide-outline" viewBox="0 0 300 225" preserveAspectRatio="none">
+      <path
+        d="M55,225 C55,155 85,125 108,103 C90,75 100,20 150,20 C200,20 210,75 192,103 C215,125 245,155 245,225"
+        fill="none"
+        stroke="white"
+        strokeWidth={4}
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
 function PostureCamera(): React.JSX.Element {
   const { videoRef, landmarks, status, error } = useFaceLandmarker()
   const { angles } = usePoseLandmarker(videoRef)
@@ -33,6 +47,7 @@ function PostureCamera(): React.JSX.Element {
     <section className="card">
       <div className="camera-frame">
         <video ref={videoRef} muted playsInline />
+        <GuideOutline />
         <span className={`dot ${status}`} />
       </div>
 
