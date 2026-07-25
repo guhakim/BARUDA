@@ -3,7 +3,7 @@ import type { PostureLandmarks } from './useFaceLandmarker'
 import type { PostureAngles } from './usePoseLandmarker'
 import {
   clearBaseline,
-  computeAbsolutePostureScore,
+  computePoseScore,
   computePostureScore,
   deriveMetrics,
   loadBaseline,
@@ -35,20 +35,18 @@ export function usePostureScore(
   const smoothedScoreRef = useRef(0)
 
   useEffect(() => {
-    if (!landmarks && !angles) return
+    if (!baseline || (!landmarks && !angles)) return
 
-    // The calibration-based score (relative to the user's own registered
-    // baseline) and the RULA/REBA-style absolute-angle score are two
-    // independent signals — take whichever says posture is worse, so a
-    // missing/late baseline never masks a real slouch the pose model caught.
-    const calibratedScore =
-      landmarks && baseline
-        ? computePostureScore(deriveMetrics(landmarks), baseline, sensitivity)
-        : 0
-    const absoluteScore = angles
-      ? computeAbsolutePostureScore(angles.neckAngleDeg, angles.trunkAngleDeg)
+    // Both signals are scored relative to what was captured at baseline
+    // registration (not absolute vertical), so camera placement/angle bias
+    // cancels out the same way for pose angles as it already does for the
+    // face-landmark ratios. Take whichever says posture is worse, so a
+    // slouch the pose model catches isn't masked by a stale face reading.
+    const faceScore = landmarks
+      ? computePostureScore(deriveMetrics(landmarks), baseline, sensitivity)
       : 0
-    const rawScore = Math.max(calibratedScore, absoluteScore)
+    const poseScore = angles ? computePoseScore(angles, baseline) : 0
+    const rawScore = Math.max(faceScore, poseScore)
 
     smoothedScoreRef.current =
       smoothedScoreRef.current + (rawScore - smoothedScoreRef.current) * SMOOTHING_ALPHA
@@ -63,7 +61,10 @@ export function usePostureScore(
 
   function registerBaseline(): void {
     if (!landmarks) return
-    const next = deriveMetrics(landmarks)
+    const next: PostureBaseline = {
+      ...deriveMetrics(landmarks),
+      ...(angles && { neckAngleDeg: angles.neckAngleDeg, trunkAngleDeg: angles.trunkAngleDeg })
+    }
     saveBaseline(next)
     setBaseline(next)
     smoothedScoreRef.current = 0

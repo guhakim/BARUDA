@@ -12,12 +12,19 @@ function createWindow(): void {
     height: 670,
     show: false,
     autoHideMenuBar: true,
+    alwaysOnTop: true,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
     }
   })
+
+  // Keeps the window above other apps even after it loses focus (e.g. the
+  // user clicks elsewhere), since this is a small always-visible companion
+  // window rather than a normal document window.
+  mainWindow.setAlwaysOnTop(true, 'floating')
+  mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
