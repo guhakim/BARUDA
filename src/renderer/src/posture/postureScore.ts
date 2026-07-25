@@ -61,3 +61,32 @@ export function computePostureScore(
 export function scoreToBlurPx(score: number, maxBlurPx = 15): number {
   return Math.round((score / 100) * maxBlurPx)
 }
+
+// Simplified RULA/REBA-style neck/trunk flexion bands (angle vs. vertical,
+// in degrees) mapped onto the same 0-100 scale as the calibration-based
+// score. Unlike computePostureScore, this needs no personal baseline —
+// it works off absolute posture angles from MediaPipe Pose Landmarker.
+function angleBandScore(angleDeg: number, bands: [number, number][]): number {
+  for (const [maxAngle, score] of bands) {
+    if (angleDeg <= maxAngle) return score
+  }
+  return 100
+}
+
+const NECK_BANDS: [number, number][] = [
+  [10, 0],
+  [20, 35],
+  [35, 65]
+]
+const TRUNK_BANDS: [number, number][] = [
+  [10, 0],
+  [20, 35],
+  [40, 65]
+]
+
+export function computeAbsolutePostureScore(neckAngleDeg: number, trunkAngleDeg: number): number {
+  return Math.max(
+    angleBandScore(neckAngleDeg, NECK_BANDS),
+    angleBandScore(trunkAngleDeg, TRUNK_BANDS)
+  )
+}

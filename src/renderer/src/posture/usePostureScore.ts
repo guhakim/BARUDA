@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PostureLandmarks } from './useFaceLandmarker'
+import type { PostureAngles } from './usePoseLandmarker'
 import {
   clearBaseline,
+  computeAbsolutePostureScore,
   computePostureScore,
   deriveMetrics,
   loadBaseline,
@@ -24,6 +26,7 @@ interface UsePostureScoreResult {
 
 export function usePostureScore(
   landmarks: PostureLandmarks | null,
+  angles: PostureAngles | null,
   sensitivity = 1
 ): UsePostureScoreResult {
   const [baseline, setBaseline] = useState<PostureBaseline | null>(() => loadBaseline())
@@ -32,10 +35,20 @@ export function usePostureScore(
   const smoothedScoreRef = useRef(0)
 
   useEffect(() => {
-    if (!landmarks || !baseline) return
+    if (!landmarks && !angles) return
 
-    const current = deriveMetrics(landmarks)
-    const rawScore = computePostureScore(current, baseline, sensitivity)
+    // The calibration-based score (relative to the user's own registered
+    // baseline) and the RULA/REBA-style absolute-angle score are two
+    // independent signals — take whichever says posture is worse, so a
+    // missing/late baseline never masks a real slouch the pose model caught.
+    const calibratedScore =
+      landmarks && baseline
+        ? computePostureScore(deriveMetrics(landmarks), baseline, sensitivity)
+        : 0
+    const absoluteScore = angles
+      ? computeAbsolutePostureScore(angles.neckAngleDeg, angles.trunkAngleDeg)
+      : 0
+    const rawScore = Math.max(calibratedScore, absoluteScore)
 
     smoothedScoreRef.current =
       smoothedScoreRef.current + (rawScore - smoothedScoreRef.current) * SMOOTHING_ALPHA
@@ -46,7 +59,7 @@ export function usePostureScore(
     setBlurPx(nextBlurPx)
     window.electron.ipcRenderer.send('overlay:set-blur', nextBlurPx)
     window.electron.ipcRenderer.send('posture:report', { score: smoothed, timestamp: Date.now() })
-  }, [landmarks, baseline, sensitivity])
+  }, [landmarks, angles, baseline, sensitivity])
 
   function registerBaseline(): void {
     if (!landmarks) return

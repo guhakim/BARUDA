@@ -1,46 +1,33 @@
 import { useFaceLandmarker } from './useFaceLandmarker'
+import { usePoseLandmarker } from './usePoseLandmarker'
 import { usePostureScore } from './usePostureScore'
 
-const RING_RADIUS = 40
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS
+function statusEmoji(goodness: number): string {
+  if (goodness >= 70) return '👍'
+  if (goodness >= 40) return '😐'
+  return '😣'
+}
 
-function ScoreRing({ score }: { score: number }): React.JSX.Element {
-  const goodness = 100 - score
-  const offset = RING_CIRCUMFERENCE * (1 - goodness / 100)
-  const color = goodness >= 70 ? '#4f9d69' : goodness >= 40 ? '#d9b45c' : '#e0736b'
+function HealthBar({ goodness }: { goodness: number }): React.JSX.Element {
+  const color = goodness >= 70 ? '#2f9e6e' : goodness >= 40 ? '#d9b45c' : '#e0736b'
 
   return (
-    <div className="score-ring">
-      <svg width={96} height={96}>
-        <circle
-          cx={48}
-          cy={48}
-          r={RING_RADIUS}
-          stroke="rgba(255,255,255,0.08)"
-          strokeWidth={8}
-          fill="none"
-        />
-        <circle
-          cx={48}
-          cy={48}
-          r={RING_RADIUS}
-          stroke={color}
-          strokeWidth={8}
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={RING_CIRCUMFERENCE}
-          strokeDashoffset={offset}
-          style={{ transition: 'stroke-dashoffset 300ms ease-out, stroke 300ms ease-out' }}
-        />
-      </svg>
-      <span className="value">{goodness}</span>
+    <div className="health-bar">
+      <span className="health-label">자세</span>
+      <div className="health-track">
+        <div className="health-fill" style={{ width: `${goodness}%`, background: color }} />
+      </div>
+      <span className="health-value">{goodness}%</span>
     </div>
   )
 }
 
 function PostureCamera(): React.JSX.Element {
   const { videoRef, landmarks, status, error } = useFaceLandmarker()
-  const { baseline, score, registerBaseline } = usePostureScore(landmarks)
+  const { angles } = usePoseLandmarker(videoRef)
+  const { baseline, score, registerBaseline } = usePostureScore(landmarks, angles)
+  const goodness = 100 - score
+  const ready = landmarks || angles
 
   return (
     <section className="card">
@@ -49,22 +36,23 @@ function PostureCamera(): React.JSX.Element {
         <span className={`dot ${status}`} />
       </div>
 
-      {error ? (
-        <p className="error-text">카메라를 사용할 수 없습니다</p>
-      ) : baseline ? (
-        <ScoreRing score={score} />
-      ) : (
-        <p className="hint">바른 자세로 앉은 뒤 기준점을 등록하세요</p>
-      )}
-
       <button
         type="button"
-        className={baseline ? 'btn btn-ghost' : 'btn btn-primary'}
+        className="status-btn"
         onClick={registerBaseline}
         disabled={!landmarks}
+        title={baseline ? '기준점 다시 등록' : '기준점 등록(선택)'}
       >
-        {baseline ? '기준점 다시 등록' : '기준점 등록'}
+        {error ? '⚠️' : ready ? statusEmoji(goodness) : '📍'}
       </button>
+
+      {error ? (
+        <p className="error-text">카메라를 사용할 수 없습니다</p>
+      ) : ready ? (
+        <HealthBar goodness={goodness} />
+      ) : (
+        <p className="hint">자세를 인식하는 중이에요</p>
+      )}
     </section>
   )
 }

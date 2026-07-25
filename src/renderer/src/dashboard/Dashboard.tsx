@@ -35,7 +35,7 @@ function WeeklyChart({ days }: { days: DailyPostureSummary[] }): React.JSX.Eleme
               fontSize={10}
               fill="var(--ev-c-text-3)"
             >
-              {day.date.slice(8)}
+              {day.date.slice(5).replace('-', '.')}
             </text>
           </g>
         )

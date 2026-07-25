@@ -18,8 +18,17 @@
 }
 
 .app-header {
-  text-align: center;
   margin-bottom: 4px;
+  align-items: flex-start;
+}
+
+.app-header > div:first-child {
+  width: 36px;
+}
+
+.app-header > div:nth-child(2) {
+  text-align: center;
+  flex: 1;
 }
 
 .app-header h1 {
@@ -32,6 +41,23 @@
   font-size: 13px;
   color: var(--ev-c-text-3);
   margin-top: 4px;
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--surface-border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--ev-c-text-2);
+  font-size: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.icon-btn:hover {
+  background: var(--ev-c-white-mute);
 }
 
 .card {
@@ -48,12 +74,12 @@
 
 .camera-frame {
   position: relative;
-  width: 160px;
-  height: 160px;
-  border-radius: 50%;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 20px;
   overflow: hidden;
   background: var(--ev-c-white-mute);
-  border: 3px solid var(--surface-border);
+  border: 1px solid var(--surface-border);
 }
 
 .camera-frame video {
@@ -83,23 +109,63 @@
   background: var(--danger);
 }
 
-.score-ring {
-  position: relative;
-  width: 96px;
-  height: 96px;
+.status-btn {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 1px solid var(--surface-border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  margin-top: -46px;
+  transition: transform 150ms;
+}
+
+.status-btn:hover {
+  transform: scale(1.05);
+}
+
+.status-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.health-bar {
+  width: 100%;
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 10px;
 }
 
-.score-ring svg {
-  transform: rotate(-90deg);
+.health-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  flex-shrink: 0;
 }
 
-.score-ring .value {
-  position: absolute;
-  font-size: 24px;
+.health-track {
+  flex: 1;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--ev-c-white-mute);
+  overflow: hidden;
+}
+
+.health-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 300ms ease-out, background 300ms ease-out;
+}
+
+.health-value {
+  font-size: 13px;
   font-weight: 700;
+  flex-shrink: 0;
+  width: 36px;
+  text-align: right;
 }
 
 .hint {
