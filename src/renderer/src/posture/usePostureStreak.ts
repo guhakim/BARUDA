@@ -23,6 +23,13 @@ export function usePostureStreak(
   const [totalPoints, setTotalPoints] = useState(() => loadTotalPoints())
   const goodnessRef = useRef(goodness)
   const trackingRef = useRef(tracking)
+  // Plain mutable counters, not React state read inside the interval — a
+  // functional setState updater can run twice under StrictMode (React
+  // deliberately double-invokes it to check for impure updaters), and the
+  // localStorage write nested inside the previous version fired every
+  // time that happened, awarding two points instead of one.
+  const streakRef = useRef(0)
+  const totalPointsRef = useRef(totalPoints)
 
   useEffect(() => {
     goodnessRef.current = goodness
@@ -32,20 +39,19 @@ export function usePostureStreak(
   useEffect(() => {
     const interval = setInterval(() => {
       if (!trackingRef.current || goodnessRef.current < GOOD_THRESHOLD) {
+        streakRef.current = 0
         setStreakSeconds(0)
         return
       }
-      setStreakSeconds((s) => {
-        const next = s + 1
-        if (next % SECONDS_PER_POINT === 0) {
-          setTotalPoints((p) => {
-            const nextPoints = p + 1
-            localStorage.setItem(TOTAL_POINTS_KEY, String(nextPoints))
-            return nextPoints
-          })
-        }
-        return next
-      })
+
+      streakRef.current += 1
+      setStreakSeconds(streakRef.current)
+
+      if (streakRef.current % SECONDS_PER_POINT === 0) {
+        totalPointsRef.current += 1
+        localStorage.setItem(TOTAL_POINTS_KEY, String(totalPointsRef.current))
+        setTotalPoints(totalPointsRef.current)
+      }
     }, 1000)
 
     return () => clearInterval(interval)
