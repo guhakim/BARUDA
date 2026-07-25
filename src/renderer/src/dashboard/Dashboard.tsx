@@ -1,9 +1,9 @@
 import type { SubscriptionStatus } from '../billing/useSubscriptionStatus'
 import { usePostureLogs, type DailyPostureSummary } from './usePostureLogs'
 
-const CHART_HEIGHT = 120
-const BAR_WIDTH = 28
-const BAR_GAP = 12
+const CHART_HEIGHT = 96
+const BAR_WIDTH = 24
+const BAR_GAP = 10
 
 function goodRatio(day: DailyPostureSummary): number {
   const total = day.goodSec + day.badSec
@@ -14,7 +14,7 @@ function WeeklyChart({ days }: { days: DailyPostureSummary[] }): React.JSX.Eleme
   const width = days.length * (BAR_WIDTH + BAR_GAP)
 
   return (
-    <svg width={width} height={CHART_HEIGHT + 24} role="img" aria-label="주간 바른 자세 비율">
+    <svg width={width} height={CHART_HEIGHT + 20} role="img" aria-label="주간 바른 자세 비율">
       {days.map((day, i) => {
         const ratio = goodRatio(day)
         const barHeight = Math.max(2, ratio * CHART_HEIGHT)
@@ -27,31 +27,21 @@ function WeeklyChart({ days }: { days: DailyPostureSummary[] }): React.JSX.Eleme
               width={BAR_WIDTH}
               height={barHeight}
               fill="#4f9d69"
-              rx={4}
+              rx={5}
             />
-            <text x={x + BAR_WIDTH / 2} y={CHART_HEIGHT + 16} textAnchor="middle" fontSize={10}>
-              {day.date.slice(5)}
+            <text
+              x={x + BAR_WIDTH / 2}
+              y={CHART_HEIGHT + 14}
+              textAnchor="middle"
+              fontSize={10}
+              fill="var(--ev-c-text-3)"
+            >
+              {day.date.slice(8)}
             </text>
           </g>
         )
       })}
     </svg>
-  )
-}
-
-function PremiumLock(): React.JSX.Element {
-  return (
-    <div
-      style={{
-        border: '1px dashed #999',
-        borderRadius: 8,
-        padding: 16,
-        textAlign: 'center',
-        color: '#999'
-      }}
-    >
-      <p>주간 자세 통계 대시보드는 프리미엄 구독자 전용 기능입니다.</p>
-    </div>
   )
 }
 
@@ -63,19 +53,27 @@ function Dashboard({ subscriptionStatus }: DashboardProps): React.JSX.Element {
   const { days, loading } = usePostureLogs()
   const isPremium = subscriptionStatus === 'active'
 
+  if (!isPremium) {
+    return (
+      <section className="card chart-empty">
+        <span>🔒</span>
+        <span>주간 통계는 프리미엄 기능이에요</span>
+      </section>
+    )
+  }
+
+  if (loading || days.length === 0) {
+    return (
+      <section className="card chart-empty">
+        <span>{loading ? '불러오는 중...' : '아직 데이터가 없어요'}</span>
+      </section>
+    )
+  }
+
   return (
-    <div style={{ marginTop: 24 }}>
-      <h3>주간 자세 통계</h3>
-      {!isPremium ? (
-        <PremiumLock />
-      ) : loading ? (
-        <p>불러오는 중...</p>
-      ) : days.length === 0 ? (
-        <p>아직 기록된 자세 데이터가 없습니다.</p>
-      ) : (
-        <WeeklyChart days={days} />
-      )}
-    </div>
+    <section className="card">
+      <WeeklyChart days={days} />
+    </section>
   )
 }
 

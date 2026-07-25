@@ -19,33 +19,34 @@ function AuthGate({ children }: AuthGateProps): React.JSX.Element {
 
   if (MOCK_AUTH_ENABLED) return <>{children(MOCK_SESSION)}</>
 
-  if (loading) return <p>Loading...</p>
+  if (loading) return <div className="card hint">불러오는 중...</div>
 
   if (!session) {
     return (
-      <div style={{ maxWidth: 320 }}>
-        <h3>로그인</h3>
+      <div className="card">
         <input
           type="email"
           placeholder="이메일"
+          className="field"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          style={{ display: 'block', width: '100%', marginBottom: 8 }}
         />
         <input
           type="password"
           placeholder="비밀번호"
+          className="field"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          style={{ display: 'block', width: '100%', marginBottom: 8 }}
         />
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-        <button type="button" onClick={() => signIn(email, password)}>
-          로그인
-        </button>
-        <button type="button" onClick={() => signUp(email, password)} style={{ marginLeft: 8 }}>
-          회원가입
-        </button>
+        {error && <p className="error-text">{error}</p>}
+        <div className="row" style={{ justifyContent: 'center', gap: 8 }}>
+          <button type="button" className="btn btn-primary" onClick={() => signIn(email, password)}>
+            로그인
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={() => signUp(email, password)}>
+            회원가입
+          </button>
+        </div>
       </div>
     )
   }

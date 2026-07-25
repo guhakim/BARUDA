@@ -31,18 +31,24 @@ function BillingPanel({ session, status, loading }: BillingPanelProps): React.JS
     }
   }
 
-  if (loading) return <p>구독 상태 확인 중...</p>
+  if (loading) return <></>
 
   return (
-    <div style={{ marginTop: 24 }}>
-      <h3>구독</h3>
-      <p>현재 상태: {status}</p>
+    <div className="row" style={{ padding: '0 4px' }}>
+      <span className={`badge ${status === 'active' ? 'active' : ''}`}>
+        {status === 'active' ? '프리미엄' : '무료'}
+      </span>
       {status !== 'active' && (
-        <button type="button" onClick={startCheckout} disabled={redirecting}>
-          {redirecting ? '이동 중...' : '프리미엄 구독하기'}
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={startCheckout}
+          disabled={redirecting}
+        >
+          {redirecting ? '이동 중...' : '업그레이드'}
         </button>
       )}
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {error && <p className="error-text">{error}</p>}
     </div>
   )
 }

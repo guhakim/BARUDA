@@ -1,41 +1,71 @@
 import { useFaceLandmarker } from './useFaceLandmarker'
 import { usePostureScore } from './usePostureScore'
 
-function PostureCamera(): React.JSX.Element {
-  const { videoRef, landmarks, status, error } = useFaceLandmarker()
-  const { baseline, score, blurPx, registerBaseline, resetBaseline } = usePostureScore(landmarks)
+const RING_RADIUS = 40
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS
+
+function ScoreRing({ score }: { score: number }): React.JSX.Element {
+  const goodness = 100 - score
+  const offset = RING_CIRCUMFERENCE * (1 - goodness / 100)
+  const color = goodness >= 70 ? '#4f9d69' : goodness >= 40 ? '#d9b45c' : '#e0736b'
 
   return (
-    <div style={{ marginTop: 24 }}>
-      <h3>Posture tracking (MediaPipe Face Landmarker)</h3>
-      <video
-        ref={videoRef}
-        muted
-        playsInline
-        style={{ width: 240, height: 180, transform: 'scaleX(-1)', background: '#000' }}
-      />
-      <p>Status: {status}</p>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+    <div className="score-ring">
+      <svg width={96} height={96}>
+        <circle
+          cx={48}
+          cy={48}
+          r={RING_RADIUS}
+          stroke="rgba(255,255,255,0.08)"
+          strokeWidth={8}
+          fill="none"
+        />
+        <circle
+          cx={48}
+          cy={48}
+          r={RING_RADIUS}
+          stroke={color}
+          strokeWidth={8}
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray={RING_CIRCUMFERENCE}
+          strokeDashoffset={offset}
+          style={{ transition: 'stroke-dashoffset 300ms ease-out, stroke 300ms ease-out' }}
+        />
+      </svg>
+      <span className="value">{goodness}</span>
+    </div>
+  )
+}
 
-      <div style={{ marginTop: 8 }}>
-        <button type="button" onClick={registerBaseline} disabled={!landmarks}>
-          바른 자세 기준점 등록
-        </button>
-        {baseline && (
-          <button type="button" onClick={resetBaseline} style={{ marginLeft: 8 }}>
-            기준점 초기화
-          </button>
-        )}
+function PostureCamera(): React.JSX.Element {
+  const { videoRef, landmarks, status, error } = useFaceLandmarker()
+  const { baseline, score, registerBaseline } = usePostureScore(landmarks)
+
+  return (
+    <section className="card">
+      <div className="camera-frame">
+        <video ref={videoRef} muted playsInline />
+        <span className={`dot ${status}`} />
       </div>
 
-      {baseline ? (
-        <p>
-          거북목 점수: {score} / 100 (blur {blurPx}px)
-        </p>
+      {error ? (
+        <p className="error-text">카메라를 사용할 수 없습니다</p>
+      ) : baseline ? (
+        <ScoreRing score={score} />
       ) : (
-        <p>기준점이 없습니다. 바른 자세로 앉은 뒤 기준점을 등록하세요.</p>
+        <p className="hint">바른 자세로 앉은 뒤 기준점을 등록하세요</p>
       )}
-    </div>
+
+      <button
+        type="button"
+        className={baseline ? 'btn btn-ghost' : 'btn btn-primary'}
+        onClick={registerBaseline}
+        disabled={!landmarks}
+      >
+        {baseline ? '기준점 다시 등록' : '기준점 등록'}
+      </button>
+    </section>
   )
 }
 
