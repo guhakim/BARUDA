@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabaseClient'
+import { MOCK_AUTH_ENABLED } from '../lib/devMock'
 
 export type SubscriptionStatus = 'active' | 'canceled' | 'past_due' | 'incomplete' | 'none'
 
@@ -20,7 +21,7 @@ export function useSubscriptionStatus(session: Session | null): {
   const [fetched, setFetched] = useState<FetchedStatus>({ session: null, status: 'none' })
 
   useEffect(() => {
-    if (!session) return
+    if (!session || MOCK_AUTH_ENABLED) return
     let cancelled = false
 
     supabase
@@ -39,6 +40,7 @@ export function useSubscriptionStatus(session: Session | null): {
   }, [session])
 
   if (!session) return { status: 'none', loading: false }
+  if (MOCK_AUTH_ENABLED) return { status: 'active', loading: false }
   return {
     status: fetched.session === session ? fetched.status : 'none',
     loading: fetched.session !== session

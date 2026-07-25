@@ -15,9 +15,11 @@
 
 ```bash
 npm install
-cp .env.example .env   # Supabase URL/anon key, 백엔드 주소 채우기
+cp .env.example .env   # 기본값(VITE_MOCK_AUTH=true)이면 Supabase/Stripe 계정 없이 바로 실행 가능
 npm run dev
 ```
+
+Supabase/Stripe 계정 없이도 `VITE_MOCK_AUTH=true`(기본값)면 로그인 게이트를 건너뛰고 구독 상태를 항상 "active"로 취급합니다 — 자세 인식·오버레이 블러·대시보드 등 나머지 기능을 전부 테스트할 수 있습니다. `import.meta.env.DEV`로 감싸져 있어 프로덕션 빌드에는 영향 없습니다.
 
 ## 클라우드 백엔드 (Supabase + Stripe)
 

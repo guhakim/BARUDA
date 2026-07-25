@@ -1,15 +1,23 @@
 import { useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { useAuth } from './useAuth'
+import { MOCK_AUTH_ENABLED } from '../lib/devMock'
 
 interface AuthGateProps {
   children: (session: Session) => React.ReactNode
 }
 
+const MOCK_SESSION = {
+  user: { id: 'mock-user-id', email: 'mock@local.test' },
+  access_token: 'mock-access-token'
+} as unknown as Session
+
 function AuthGate({ children }: AuthGateProps): React.JSX.Element {
   const { session, loading, error, signIn, signUp } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+
+  if (MOCK_AUTH_ENABLED) return <>{children(MOCK_SESSION)}</>
 
   if (loading) return <p>Loading...</p>
 
