@@ -44,6 +44,29 @@ function WeeklyChart({ days }: { days: DailyPostureSummary[] }): React.JSX.Eleme
   )
 }
 
+function formatDate(dateKey: string): string {
+  return dateKey.slice(5).replace('-', '.')
+}
+
+function DailyRecordList({ days }: { days: DailyPostureSummary[] }): React.JSX.Element {
+  return (
+    <ul className="record-list">
+      {[...days].reverse().map((day) => {
+        const total = day.goodSec + day.badSec
+        const goodPct = total === 0 ? 0 : Math.round((day.goodSec / total) * 100)
+        const badPct = 100 - goodPct
+        return (
+          <li key={day.date} className="record-row">
+            <span className="record-date">{formatDate(day.date)}</span>
+            <span className="record-good">바른 자세 {goodPct}%</span>
+            <span className="record-bad">나쁜 자세 {badPct}%</span>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
 function Dashboard(): React.JSX.Element {
   const { days, loading } = usePostureLogs()
 
@@ -58,6 +81,7 @@ function Dashboard(): React.JSX.Element {
   return (
     <section className="card">
       <WeeklyChart days={days} />
+      <DailyRecordList days={days} />
     </section>
   )
 }

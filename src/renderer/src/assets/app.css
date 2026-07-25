@@ -375,3 +375,38 @@
   color: var(--ev-c-text-3);
   font-weight: 600;
 }
+
+.record-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.record-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--ev-c-white-mute);
+  font-size: 12px;
+}
+
+.record-date {
+  font-weight: 700;
+  color: var(--ev-c-text-1);
+  flex-shrink: 0;
+}
+
+.record-good {
+  color: #2f9e6e;
+  font-weight: 600;
+}
+
+.record-bad {
+  color: #e0736b;
+  font-weight: 600;
+}
