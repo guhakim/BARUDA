@@ -39,6 +39,46 @@ export function summarizeByDay(rows: PostureLogRow[]): DailyPostureSummary[] {
   return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date))
 }
 
+function pad(n: number): string {
+  return n.toString().padStart(2, '0')
+}
+
+function dateKeyForDay(day: number): string {
+  const now = new Date()
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(day)}`
+}
+
+function todayKey(): string {
+  const now = new Date()
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+}
+
+// 07.21~07.24는 실제 사용 이력이 쌓이기 전 구간이라 더미 값으로 채우고,
+// 오늘(todayKey) 이후부터는 실제 posture_logs 데이터로 대체한다.
+const DUMMY_PREFIX_DAYS: DailyPostureSummary[] = [
+  { day: 21, goodSec: 1980, badSec: 1620 }, // 55% / 45%
+  { day: 22, goodSec: 1440, badSec: 2160 }, // 40% / 60%
+  { day: 23, goodSec: 2340, badSec: 1260 }, // 65% / 35%
+  { day: 24, goodSec: 1800, badSec: 1800 } // 50% / 50%
+].map(({ day, goodSec, badSec }) => ({
+  date: dateKeyForDay(day),
+  goodSec,
+  badSec,
+  triggerCount: 0
+}))
+
+export function withDummyPrefix(realDays: DailyPostureSummary[]): DailyPostureSummary[] {
+  const today = todayKey()
+  const merged = new Map<string, DailyPostureSummary>()
+  for (const day of DUMMY_PREFIX_DAYS) merged.set(day.date, day)
+  for (const day of realDays) {
+    if (day.date >= today) merged.set(day.date, day)
+  }
+  return Array.from(merged.values())
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-14)
+}
+
 export function usePostureLogs(): { days: DailyPostureSummary[]; loading: boolean } {
   const [days, setDays] = useState<DailyPostureSummary[]>([])
   const [loading, setLoading] = useState(true)
