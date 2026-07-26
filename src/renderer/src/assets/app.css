@@ -257,6 +257,14 @@
   transform: none;
 }
 
+.health-bar-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
 .health-bar {
   width: 100%;
   display: flex;
@@ -288,9 +296,7 @@
 .health-value {
   font-size: 13px;
   font-weight: 700;
-  flex-shrink: 0;
-  width: 36px;
-  text-align: right;
+  color: var(--ev-c-text-1);
 }
 
 .hint {

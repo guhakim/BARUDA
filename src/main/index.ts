@@ -3,6 +3,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { createOverlayWindows, setOverlayBlur } from './overlayWindow'
+import { createMiniBarWindow, showMiniBar, hideMiniBar, setMiniBarGoodness } from './miniBarWindow'
 import { getRecentPostureLogs, recordPostureSample } from './postureStore'
 
 function createWindow(): void {
@@ -28,6 +29,26 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
+  })
+
+  // Clicking the yellow traffic-light button swaps the full camera window
+  // for a slim bottom-of-screen bar, so the webcam feed isn't on screen
+  // when someone else is around, while posture status (green/red) stays
+  // visible at a glance. Unlike the first attempt at this, we do NOT call
+  // restore()/hide() mid-animation here — fighting the native minimize
+  // transition on an always-on-top window is what previously left it stuck
+  // in fullscreen. Instead we let the window actually minimize to the Dock
+  // and only show the mini bar alongside it; restoring later is a plain
+  // restore() + show(), well after any transition has settled.
+  mainWindow.on('minimize', () => {
+    showMiniBar()
+  })
+
+  ipcMain.on('minibar:restore', () => {
+    hideMiniBar()
+    mainWindow.restore()
+    mainWindow.show()
+    mainWindow.focus()
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -63,13 +84,15 @@ app.whenReady().then(() => {
 
   ipcMain.on('overlay:set-blur', (_event, level: number) => setOverlayBlur(level))
 
-  ipcMain.on('posture:report', (_event, payload: { score: number; timestamp: number }) =>
+  ipcMain.on('posture:report', (_event, payload: { score: number; timestamp: number }) => {
     recordPostureSample(payload.score, payload.timestamp)
-  )
+    setMiniBarGoodness(100 - payload.score)
+  })
 
   ipcMain.handle('posture:get-logs', () => getRecentPostureLogs())
 
   createOverlayWindows()
+  createMiniBarWindow()
   createWindow()
 
   app.on('activate', function () {

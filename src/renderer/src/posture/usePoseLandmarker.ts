@@ -34,8 +34,7 @@ export function usePoseLandmarker(videoRef: React.RefObject<HTMLVideoElement | n
 
   useEffect(() => {
     let cancelled = false
-    let rafId = 0
-    let lastDetectTime = 0
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
     const DETECT_INTERVAL_MS = 350
 
     async function setup(): Promise<void> {
@@ -59,14 +58,11 @@ export function usePoseLandmarker(videoRef: React.RefObject<HTMLVideoElement | n
     }
 
     function detectLoop(): void {
-      rafId = requestAnimationFrame(detectLoop)
+      timeoutId = setTimeout(detectLoop, DETECT_INTERVAL_MS)
       const landmarker = landmarkerRef.current
       if (cancelled || !landmarker || !videoRef.current) return
 
       const now = performance.now()
-      if (now - lastDetectTime < DETECT_INTERVAL_MS) return
-      lastDetectTime = now
-
       if (videoRef.current.readyState < 2) return
 
       const result = landmarker.detectForVideo(videoRef.current, now)
@@ -104,7 +100,7 @@ export function usePoseLandmarker(videoRef: React.RefObject<HTMLVideoElement | n
 
     return () => {
       cancelled = true
-      cancelAnimationFrame(rafId)
+      clearTimeout(timeoutId)
       landmarkerRef.current?.close()
       landmarkerRef.current = null
     }

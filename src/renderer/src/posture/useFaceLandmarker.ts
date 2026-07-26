@@ -31,7 +31,7 @@ export function useFaceLandmarker(): UseFaceLandmarkerResult {
 
   useEffect(() => {
     let cancelled = false
-    let rafId = 0
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
     let stream: MediaStream | null = null
     let landmarker: FaceLandmarker | null = null
 
@@ -64,18 +64,18 @@ export function useFaceLandmarker(): UseFaceLandmarkerResult {
     }
 
     // Runs at the FR-02 target cadence (~2-3Hz) rather than every frame,
-    // to keep CPU usage inside the NFR-02 budget.
-    let lastDetectTime = 0
+    // to keep CPU usage inside the NFR-02 budget. Uses setTimeout instead
+    // of requestAnimationFrame so tracking keeps running (posture score
+    // and the mini bar's color) while the main window is hidden behind
+    // the mini bar — rAF callbacks are paused entirely by Chromium once a
+    // window isn't visible, which froze the mini bar at its last color.
     const DETECT_INTERVAL_MS = 350
 
     function detectLoop(): void {
-      rafId = requestAnimationFrame(detectLoop)
+      timeoutId = setTimeout(detectLoop, DETECT_INTERVAL_MS)
       if (cancelled || !landmarker || !videoRef.current) return
 
       const now = performance.now()
-      if (now - lastDetectTime < DETECT_INTERVAL_MS) return
-      lastDetectTime = now
-
       if (videoRef.current.readyState < 2) return
 
       const result = landmarker.detectForVideo(videoRef.current, now)
@@ -106,7 +106,7 @@ export function useFaceLandmarker(): UseFaceLandmarkerResult {
 
     return () => {
       cancelled = true
-      cancelAnimationFrame(rafId)
+      clearTimeout(timeoutId)
       stream?.getTracks().forEach((track) => track.stop())
       landmarker?.close()
     }
