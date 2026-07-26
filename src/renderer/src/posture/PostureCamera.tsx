@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useFaceLandmarker } from './useFaceLandmarker'
 import { usePoseLandmarker } from './usePoseLandmarker'
 import { usePostureScore } from './usePostureScore'
@@ -77,6 +78,43 @@ function formatStreak(totalSeconds: number): string {
 const STREAK_RING_RADIUS = 30
 const STREAK_RING_CIRCUMFERENCE = 2 * Math.PI * STREAK_RING_RADIUS
 
+function GiftIcon(): React.JSX.Element {
+  return (
+    <svg
+      width={18}
+      height={18}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="#1a1a1a"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x={3} y={9} width={18} height={11} rx={1.5} />
+      <path d="M3 13h18" />
+      <path d="M12 9v11" />
+      <path d="M12 9C10 9 8 8 8 6a2 2 0 0 1 4-.5A2 2 0 0 1 16 6c0 2-2 3-4 3Z" />
+    </svg>
+  )
+}
+
+function PointsInfoModal({ onClose }: { onClose: () => void }): React.JSX.Element {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>포인트 사용 방법</h2>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="닫기">
+            ✕
+          </button>
+        </div>
+        <p className="hint">바른 자세를 유지할수록 포인트가 쌓여요.</p>
+        <p className="hint">적립한 포인트로 교환할 수 있는 리워드 상점을 준비 중입니다.</p>
+      </div>
+    </div>
+  )
+}
+
 // One full lap of the ring per minute of sustained good posture — a small,
 // satisfying loop instead of a bar that just fills up once and stalls.
 function PointsCard({
@@ -89,9 +127,19 @@ function PointsCard({
   const lapProgress = (streakSeconds % 60) / 60
   const offset = STREAK_RING_CIRCUMFERENCE * (1 - lapProgress)
   const active = streakSeconds > 0
+  const [showInfo, setShowInfo] = useState(false)
 
   return (
     <section className="card points-card">
+      <button
+        type="button"
+        className="icon-btn points-info-btn"
+        onClick={() => setShowInfo(true)}
+        aria-label="포인트 사용 방법"
+      >
+        <GiftIcon />
+      </button>
+      {showInfo && <PointsInfoModal onClose={() => setShowInfo(false)} />}
       <div className="points-row">
         <div className="streak-ring">
           <svg width={72} height={72}>
