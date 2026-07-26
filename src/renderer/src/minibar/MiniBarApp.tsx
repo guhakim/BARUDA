@@ -71,6 +71,7 @@ function MiniBarApp(): React.JSX.Element {
       onMouseDown={handleMouseDown}
       title="드래그해서 이동, 클릭하면 BARUDA 창으로 돌아갑니다"
       style={{
+        boxSizing: 'border-box',
         display: 'flex',
         alignItems: 'center',
         width: '100%',
