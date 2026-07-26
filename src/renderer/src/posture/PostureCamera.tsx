@@ -33,12 +33,10 @@ function HealthBar({ goodness }: { goodness: number }): React.JSX.Element {
   const color = goodnessColor(goodness)
 
   return (
-    <div className="health-bar-wrap">
-      <div className="health-bar">
-        <span className="health-label">자세</span>
-        <div className="health-track">
-          <div className="health-fill" style={{ width: `${goodness}%`, background: color }} />
-        </div>
+    <div className="health-bar">
+      <span className="health-label">자세</span>
+      <div className="health-track">
+        <div className="health-fill" style={{ width: `${goodness}%`, background: color }} />
       </div>
       <span className="health-value">{goodness}%</span>
     </div>

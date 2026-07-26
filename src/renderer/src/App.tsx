@@ -4,6 +4,24 @@ import Dashboard from './dashboard/Dashboard'
 
 const CONTACT_EMAIL = 'felpen@naver.com'
 
+function MiniBarIcon(): React.JSX.Element {
+  return (
+    <svg
+      width={18}
+      height={18}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="#1a1a1a"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x={3} y={16} width={18} height={5} rx={1.5} />
+      <path d="M6 4v9M18 4v9M6 13l3-3M18 13l-3-3" />
+    </svg>
+  )
+}
+
 function MailIcon(): React.JSX.Element {
   return (
     <svg
@@ -92,7 +110,15 @@ function App(): React.JSX.Element {
   return (
     <div className="app">
       <header className="app-header row">
-        <div />
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={() => window.electron.ipcRenderer.send('minibar:show')}
+          aria-label="작은 바로 보기"
+          title="작은 바로 보기"
+        >
+          <MiniBarIcon />
+        </button>
         <div>
           <h1>BARUDA</h1>
           <p>바른 자세를 자연스럽게</p>

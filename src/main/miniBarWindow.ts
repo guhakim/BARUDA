@@ -59,3 +59,15 @@ export function hideMiniBar(): void {
 export function setMiniBarGoodness(goodness: number): void {
   miniBarWindow?.webContents.send('minibar:goodness', goodness)
 }
+
+// Moves the bar by a mouse-drag delta reported from the renderer, instead
+// of using BrowserWindow's native `movable`. A movable, transparent,
+// full-width always-on-top window turned out to interfere with the main
+// window's visibility on macOS (it would silently fail to show on launch),
+// so dragging is done by hand: track the pointer in the renderer and
+// reposition the window frame-by-frame here.
+export function moveMiniBarBy(dx: number, dy: number): void {
+  if (!miniBarWindow) return
+  const [x, y] = miniBarWindow.getPosition()
+  miniBarWindow.setPosition(Math.round(x + dx), Math.round(y + dy))
+}

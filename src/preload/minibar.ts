@@ -6,6 +6,9 @@ const minibarAPI = {
   },
   restore: (): void => {
     ipcRenderer.send('minibar:restore')
+  },
+  moveBy: (dx: number, dy: number): void => {
+    ipcRenderer.send('minibar:move', dx, dy)
   }
 }
 

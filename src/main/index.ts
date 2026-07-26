@@ -3,7 +3,13 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { createOverlayWindows, setOverlayBlur } from './overlayWindow'
-import { createMiniBarWindow, showMiniBar, hideMiniBar, setMiniBarGoodness } from './miniBarWindow'
+import {
+  createMiniBarWindow,
+  showMiniBar,
+  hideMiniBar,
+  setMiniBarGoodness,
+  moveMiniBarBy
+} from './miniBarWindow'
 import { getRecentPostureLogs, recordPostureSample } from './postureStore'
 
 function createWindow(): void {
@@ -31,18 +37,17 @@ function createWindow(): void {
     mainWindow.show()
   })
 
-  // Clicking the yellow traffic-light button swaps the full camera window
-  // for a slim bottom-of-screen bar, so the webcam feed isn't on screen
-  // when someone else is around, while posture status (green/red) stays
-  // visible at a glance. Unlike the first attempt at this, we do NOT call
-  // restore()/hide() mid-animation here — fighting the native minimize
-  // transition on an always-on-top window is what previously left it stuck
-  // in fullscreen. Instead we let the window actually minimize to the Dock
-  // and only show the mini bar alongside it; restoring later is a plain
-  // restore() + show(), well after any transition has settled.
-  mainWindow.on('minimize', () => {
+  // Swaps the full camera window for a slim bottom-of-screen bar, so the
+  // webcam feed isn't on screen when someone else is around, while posture
+  // status stays visible at a glance. Triggered by an in-app icon button
+  // (not the native yellow minimize button — hijacking that event on an
+  // always-on-top window previously left it stuck in native fullscreen).
+  ipcMain.on('minibar:show', () => {
+    mainWindow.hide()
     showMiniBar()
   })
+
+  ipcMain.on('minibar:move', (_event, dx: number, dy: number) => moveMiniBarBy(dx, dy))
 
   ipcMain.on('minibar:restore', () => {
     hideMiniBar()

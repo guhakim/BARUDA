@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const RED: [number, number, number] = [224, 115, 107]
 const YELLOW: [number, number, number] = [217, 180, 92]
@@ -19,17 +19,57 @@ function goodnessColor(goodness: number): string {
   return `rgb(${r}, ${g}, ${b})`
 }
 
+// Dragging is done by hand (tracking mousedown/mousemove/mouseup and
+// calling minibarAPI.moveBy) instead of BrowserWindow's native `movable` +
+// -webkit-app-region: drag. That combo turned out to make the main window
+// silently fail to show on launch on macOS, so the window itself stays
+// non-movable and this reimplements the drag in JS.
+const CLICK_MOVE_THRESHOLD_PX = 4
+
 function MiniBarApp(): React.JSX.Element {
   const [goodness, setGoodness] = useState(100)
+  const dragState = useRef<{ lastX: number; lastY: number; totalMove: number } | null>(null)
 
   useEffect(() => {
     window.minibarAPI.onGoodness(setGoodness)
   }, [])
 
+  useEffect(() => {
+    function onMouseMove(e: MouseEvent): void {
+      const state = dragState.current
+      if (!state) return
+      const dx = e.screenX - state.lastX
+      const dy = e.screenY - state.lastY
+      state.lastX = e.screenX
+      state.lastY = e.screenY
+      state.totalMove += Math.hypot(dx, dy)
+      window.minibarAPI.moveBy(dx, dy)
+    }
+
+    function onMouseUp(): void {
+      const state = dragState.current
+      dragState.current = null
+      if (state && state.totalMove < CLICK_MOVE_THRESHOLD_PX) {
+        window.minibarAPI.restore()
+      }
+    }
+
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+  }, [])
+
+  function handleMouseDown(e: React.MouseEvent): void {
+    dragState.current = { lastX: e.screenX, lastY: e.screenY, totalMove: 0 }
+  }
+
   return (
     <div
-      onClick={() => window.minibarAPI.restore()}
-      title="클릭하면 BARUDA 창으로 돌아갑니다"
+      onMouseDown={handleMouseDown}
+      title="드래그해서 이동, 클릭하면 BARUDA 창으로 돌아갑니다"
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -53,8 +93,7 @@ function MiniBarApp(): React.JSX.Element {
           color: '#ffffff',
           fontWeight: 700,
           fontSize: 15,
-          fontFamily:
-            '"Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif'
+          fontFamily: '"Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif'
         }}
       >
         <span>자세</span>
