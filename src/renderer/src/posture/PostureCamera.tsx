@@ -132,6 +132,7 @@ function PostureCamera(): React.JSX.Element {
   const tracking = Boolean(baseline) && (Boolean(landmarks) || Boolean(angles))
   const isPerfect = tracking && goodness >= PERFECT_THRESHOLD
   const { streakSeconds, totalPoints } = usePostureStreak(goodness, tracking)
+  const cameraBlocked = status === 'ready' && !landmarks && !angles
 
   return (
     <>
@@ -139,6 +140,7 @@ function PostureCamera(): React.JSX.Element {
         <div className={`camera-frame ${isPerfect ? 'perfect' : ''}`}>
           <video ref={videoRef} muted playsInline />
           <GuideOutline goodness={tracking ? goodness : 0} perfect={isPerfect} />
+          {cameraBlocked && <p className="camera-blocked-text">카메라가 닫혀 있습니다</p>}
           <span className={`dot ${status}`} />
         </div>
 

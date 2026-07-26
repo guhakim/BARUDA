@@ -71,7 +71,10 @@ export function usePoseLandmarker(videoRef: React.RefObject<HTMLVideoElement | n
 
       const result = landmarker.detectForVideo(videoRef.current, now)
       const pose = result.landmarks?.[0]
-      if (!pose) return
+      if (!pose) {
+        setAngles(null)
+        return
+      }
 
       const leftShoulder = pose[LEFT_SHOULDER]
       const rightShoulder = pose[RIGHT_SHOULDER]
@@ -79,7 +82,10 @@ export function usePoseLandmarker(videoRef: React.RefObject<HTMLVideoElement | n
       const rightHip = pose[RIGHT_HIP]
       const leftEar = pose[LEFT_EAR]
       const rightEar = pose[RIGHT_EAR]
-      if (!leftShoulder || !rightShoulder || !leftHip || !rightHip || !leftEar || !rightEar) return
+      if (!leftShoulder || !rightShoulder || !leftHip || !rightHip || !leftEar || !rightEar) {
+        setAngles(null)
+        return
+      }
 
       const shoulderMid = {
         x: (leftShoulder.x + rightShoulder.x) / 2,

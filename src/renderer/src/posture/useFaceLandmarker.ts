@@ -80,12 +80,18 @@ export function useFaceLandmarker(): UseFaceLandmarkerResult {
 
       const result = landmarker.detectForVideo(videoRef.current, now)
       const face = result.faceLandmarks?.[0]
-      if (!face) return
+      if (!face) {
+        setLandmarks(null)
+        return
+      }
 
       const nose = face[NOSE_TIP]
       const leftEar = face[LEFT_EAR]
       const rightEar = face[RIGHT_EAR]
-      if (!nose || !leftEar || !rightEar) return
+      if (!nose || !leftEar || !rightEar) {
+        setLandmarks(null)
+        return
+      }
 
       const next: PostureLandmarks = {
         nose: { x: nose.x, y: nose.y, z: nose.z },
