@@ -2,6 +2,47 @@
 
 웹캠으로 자세를 감지해 자세가 무너지면 화면 전체를 점진적으로 흐리게 만드는 Electron 데스크톱 앱입니다.
 
+## 기술적 아키텍처
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                     Main Process (Node)                   │
+│  src/main/index.ts                                        │
+│  ├─ overlayWindow.ts   → 디스플레이별 오버레이 창 관리(Map)│
+│  ├─ miniBarWindow.ts   → 미니바 창 관리                    │
+│  ├─ postureStore.ts    → SQLite(better-sqlite3) 영속화     │
+│  └─ IPC 라우터 (ipcMain.on/handle)                         │
+└──────────────┬──────────────────────────┬─────────────────┘
+     contextBridge (preload)      contextBridge (preload)
+       │                                  │
+┌──────▼─────────────┐   ┌────────────────▼────────────────┐
+│  Main Window         │   │  Overlay Windows (N개, 모니터별) │
+│  (React SPA)          │   │  투명·frame 없음·클릭통과        │
+│  posture/ auth/        │   │  backdrop-filter: blur(Npx)     │
+│  dashboard/ billing/    │   └──────────────────────────────────┘
+└──────────────────────┘   ┌──────────────────────────────────┐
+                            │  MiniBar Window                  │
+                            │  56px 슬림 바, goodness 색상 표시 │
+                            └──────────────────────────────────┘
+```
+
+| 레이어 | 기술 | 역할 |
+|---|---|---|
+| 프레임워크 | Electron 39 + electron-vite | 3프로세스(main/preload/renderer) 빌드 파이프라인 |
+| Renderer UI | React 19 | 창마다 별도 HTML 엔트리(index/overlay/minibar) → 사실상 SPA 3개 |
+| ML 추론 | MediaPipe Tasks Vision (Face/Pose Landmarker, GPU delegate) | renderer 프로세스 내에서 로컬 추론, 서버 전송 없음 |
+| IPC | Electron ipcMain/ipcRenderer + contextBridge | 창 간 유일한 통신 수단 (전역 상태 공유 없음, 이벤트 기반) |
+| 로컬 영속화 | better-sqlite3 (WAL 모드) | 5분 버킷 통계, 동기 API라 메인 프로세스 블로킹 최소화 |
+| 인증/DB | Supabase JS SDK (renderer가 직접 호출) | RLS로 접근 제어, 별도 API 게이트웨이 없이 클라이언트-DB 직결 |
+| 결제 | NestJS 백엔드(`backend/`) + Stripe | 시크릿 키가 필요한 로직만 서버로 분리, renderer는 세션 생성 요청만 |
+| 창 렌더링 방식 | `backdropFilter` CSS + `setIgnoreMouseEvents` | OS 네이티브 블러 API 대신 웹 표준 CSS로 전체화면 오버레이 구현 |
+
+**특징**
+
+1. **창 = 독립 렌더러, 상태 공유 없음** — main/overlay/minibar가 각각 별도 React 인스턴스로 뜨고, 상태는 오직 main 프로세스를 경유한 IPC 이벤트로만 동기화됩니다. 즉 main이 허브, 각 창은 스포크인 구조.
+2. **추론은 클라이언트에, 인증/DB도 클라이언트에, 결제만 서버로** — 백엔드 의존도가 낮은 구조. Supabase RLS를 신뢰 경계로 삼아 서버 로직을 최소화하고, 시크릿이 필요한 Stripe만 별도 NestJS 서버로 분리.
+3. **폴링형 파이프라인** — MediaPipe 추론이 350ms 재귀 타이머로 도는 폴링 루프이고, 결과가 IPC로 push되는 방식이라 "관찰 → 점수화 → 전파"가 고정 주기로 반복되는 단순 파이프라인입니다.
+
 ## 프로세스 구조
 
 Electron 3-프로세스 모델로 동작하며, main 프로세스가 여러 렌더러 창을 IPC로 조율하는 허브-스포크 구조입니다.
