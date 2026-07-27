@@ -48,6 +48,51 @@ BARUDA는 이 접근을 뒤집는다. "몇 시가 됐으니 스트레칭하라"�
 - **결제**: Stripe + 별도 NestJS 백엔드(`backend/`, Stripe 시크릿 키/웹훅 처리 전용)
 - **배포**: electron-builder (Windows/macOS/Linux, GitHub Releases 타깃)
 
+## 기술 아키텍처
+
+Electron 3-프로세스 모델로 동작하며, Main Process가 여러 렌더러 창을 IPC로 조율하는 허브-스포크 구조다.
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                     Main Process (Node)                   │
+│  src/main/index.ts                                        │
+│  ├─ overlayWindow.ts   → 디스플레이별 오버레이 창 관리(Map)│
+│  ├─ miniBarWindow.ts   → 미니바 창 관리                    │
+│  ├─ postureStore.ts    → SQLite(better-sqlite3) 영속화     │
+│  └─ IPC 라우터 (ipcMain.on/handle)                         │
+└──────────────┬──────────────────────────┬─────────────────┘
+     contextBridge (preload)      contextBridge (preload)
+       │                                  │
+┌──────▼─────────────┐   ┌────────────────▼────────────────┐
+│  Main Window         │   │  Overlay Windows (N개, 모니터별) │
+│  (React SPA)          │   │  투명·frame 없음·클릭통과        │
+│  posture/ auth/        │   │  backdrop-filter: blur(Npx)     │
+│  dashboard/ billing/    │   └──────────────────────────────────┘
+└──────────────────────┘   ┌──────────────────────────────────┐
+                            │  MiniBar Window                  │
+                            │  56px 슬림 바, goodness 색상 표시 │
+                            └──────────────────────────────────┘
+```
+
+| 레이어 | 기술 | 역할 |
+|---|---|---|
+| 프레임워크 | Electron 39 + electron-vite | 3프로세스(main/preload/renderer) 빌드 파이프라인 |
+| Renderer UI | React 19 | 창마다 별도 HTML 엔트리(index/overlay/minibar) → 사실상 SPA 3개 |
+| ML 추론 | MediaPipe Tasks Vision (Face/Pose Landmarker, GPU delegate) | renderer 프로세스 내에서 로컬 추론, 서버 전송 없음 |
+| IPC | Electron ipcMain/ipcRenderer + contextBridge | 창 간 유일한 통신 수단 (전역 상태 공유 없음, 이벤트 기반) |
+| 로컬 영속화 | better-sqlite3 (WAL 모드) | 5분 버킷 통계, 동기 API라 메인 프로세스 블로킹 최소화 |
+| 인증/DB | Supabase JS SDK (renderer가 직접 호출) | RLS로 접근 제어, 별도 API 게이트웨이 없이 클라이언트-DB 직결 |
+| 결제 | NestJS 백엔드(`backend/`) + Stripe | 시크릿 키가 필요한 로직만 서버로 분리, renderer는 세션 생성 요청만 |
+| 창 렌더링 방식 | `backdropFilter` CSS + `setIgnoreMouseEvents` | OS 네이티브 블러 API 대신 웹 표준 CSS로 전체화면 오버레이 구현 |
+
+**데이터 흐름**: 인식(MediaPipe, 350ms 주기) → 점수 계산(baseline 대비 delta, EMA 스무딩) → IPC 전송(`overlay:set-blur`, `posture:report`) → Main 처리(오버레이 브로드캐스트 + SQLite 기록 + 미니바 갱신) → 오버레이 창이 `backdropFilter`로 블러 렌더링(회복 시 1초 내 복구).
+
+**설계 특징**
+
+1. **창 = 독립 렌더러, 상태 공유 없음** — main/overlay/minibar가 각각 별도 React 인스턴스로 뜨고, 상태는 오직 Main Process를 경유한 IPC 이벤트로만 동기화된다.
+2. **추론·인증·DB는 클라이언트에, 결제만 서버로** — Supabase RLS를 신뢰 경계로 삼아 서버 로직을 최소화하고, 시크릿이 필요한 Stripe만 별도 NestJS 서버로 분리.
+3. **폴링형 파이프라인** — MediaPipe 추론이 350ms 재귀 타이머로 도는 폴링 루프이며, 결과가 IPC로 push되는 단순한 "관찰 → 점수화 → 전파" 구조.
+
 ## 디자인 시스템
 
 라이트 테마 기반의 미니멀한 UI를 사용한다.
