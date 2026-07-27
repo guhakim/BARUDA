@@ -69,6 +69,26 @@ function GuideOutline({
   )
 }
 
+function BlurIcon({ disabled }: { disabled: boolean }): React.JSX.Element {
+  return (
+    <svg
+      width={16}
+      height={16}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx={7} cy={12} r={3.2} opacity={0.4} />
+      <circle cx={13.5} cy={9} r={3.2} opacity={0.7} />
+      <circle cx={17} cy={15} r={3.2} />
+      {disabled && <path d="M3 3l18 18" />}
+    </svg>
+  )
+}
+
 function formatStreak(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
@@ -175,7 +195,10 @@ function PointsCard({
 function PostureCamera(): React.JSX.Element {
   const { videoRef, landmarks, status, error } = useFaceLandmarker()
   const { angles } = usePoseLandmarker(videoRef)
-  const { baseline, score, registerBaseline } = usePostureScore(landmarks, angles)
+  const { baseline, score, blurDisabled, toggleBlurDisabled, registerBaseline } = usePostureScore(
+    landmarks,
+    angles
+  )
   const goodness = 100 - score
   const tracking = Boolean(baseline) && (Boolean(landmarks) || Boolean(angles))
   const isPerfect = tracking && goodness >= PERFECT_THRESHOLD
@@ -189,6 +212,16 @@ function PostureCamera(): React.JSX.Element {
           <video ref={videoRef} muted playsInline />
           <GuideOutline goodness={tracking ? goodness : 0} perfect={isPerfect} />
           {cameraBlocked && <p className="camera-blocked-text">카메라가 닫혀 있습니다</p>}
+          <button
+            type="button"
+            className={`blur-toggle-btn ${blurDisabled ? 'active' : ''}`}
+            onClick={toggleBlurDisabled}
+            aria-pressed={blurDisabled}
+            aria-label="화면 블러 끄기/켜기"
+            title={blurDisabled ? '블러 다시 켜기' : '화면 블러 끄기'}
+          >
+            <BlurIcon disabled={blurDisabled} />
+          </button>
           <span className={`dot ${status}`} />
         </div>
 

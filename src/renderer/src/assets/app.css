@@ -211,6 +211,36 @@
   border: 2px solid var(--surface);
 }
 
+.blur-toggle-btn {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--surface-border);
+  background: rgba(255, 255, 255, 0.85);
+  color: #1a1a1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    transform 150ms,
+    background 150ms,
+    color 150ms;
+}
+
+.blur-toggle-btn:hover {
+  transform: scale(1.08);
+}
+
+.blur-toggle-btn.active {
+  background: #5b5bf5;
+  color: #fff;
+  border-color: #5b5bf5;
+}
+
 .dot.ready {
   background: #2f9e6e;
 }

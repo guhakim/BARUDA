@@ -20,6 +20,8 @@ interface UsePostureScoreResult {
   baseline: PostureBaseline | null
   score: number
   blurPx: number
+  blurDisabled: boolean
+  toggleBlurDisabled: () => void
   registerBaseline: () => void
   resetBaseline: () => void
 }
@@ -32,7 +34,10 @@ export function usePostureScore(
   const [baseline, setBaseline] = useState<PostureBaseline | null>(() => loadBaseline())
   const [score, setScore] = useState(0)
   const [blurPx, setBlurPx] = useState(0)
+  const [blurDisabled, setBlurDisabled] = useState(false)
   const smoothedScoreRef = useRef(0)
+  const blurDisabledRef = useRef(blurDisabled)
+  blurDisabledRef.current = blurDisabled
 
   useEffect(() => {
     if (!baseline || (!landmarks && !angles)) return
@@ -55,9 +60,22 @@ export function usePostureScore(
 
     setScore(smoothed)
     setBlurPx(nextBlurPx)
-    window.electron.ipcRenderer.send('overlay:set-blur', nextBlurPx)
+    // Blur-disabled stays in effect until the person turns it back on
+    // themselves — it shouldn't get overwritten by the next posture sample.
+    window.electron.ipcRenderer.send('overlay:set-blur', blurDisabledRef.current ? 0 : nextBlurPx)
     window.electron.ipcRenderer.send('posture:report', { score: smoothed, timestamp: Date.now() })
   }, [landmarks, angles, baseline, sensitivity])
+
+  // Lets someone who wants a clear screen right now (e.g. presenting,
+  // showing someone else the screen) suppress the blur entirely instead of
+  // it kicking in the moment their posture score says it should.
+  function toggleBlurDisabled(): void {
+    setBlurDisabled((prev) => {
+      const next = !prev
+      window.electron.ipcRenderer.send('overlay:set-blur', next ? 0 : blurPx)
+      return next
+    })
+  }
 
   function registerBaseline(): void {
     if (!landmarks) return
@@ -70,6 +88,7 @@ export function usePostureScore(
     smoothedScoreRef.current = 0
     setScore(0)
     setBlurPx(0)
+    setBlurDisabled(false)
     window.electron.ipcRenderer.send('overlay:set-blur', 0)
   }
 
@@ -79,8 +98,17 @@ export function usePostureScore(
     smoothedScoreRef.current = 0
     setScore(0)
     setBlurPx(0)
+    setBlurDisabled(false)
     window.electron.ipcRenderer.send('overlay:set-blur', 0)
   }
 
-  return { baseline, score, blurPx, registerBaseline, resetBaseline }
+  return {
+    baseline,
+    score,
+    blurPx,
+    blurDisabled,
+    toggleBlurDisabled,
+    registerBaseline,
+    resetBaseline
+  }
 }
