@@ -2,91 +2,71 @@
 
 웹캠으로 자세를 감지해 자세가 무너지면 화면 전체를 점진적으로 흐리게 만드는 Electron 데스크톱 앱입니다.
 
-## 제품 개요
+## 프로젝트 개요
 
-- **핵심 가치:** 알림음 대신 화면 블러로 무의식적 자세 교정 유도, 카메라 영상은 로컬에서만 처리(프라이버시), 통계 대시보드 + 구독(Stripe)으로 수익화.
-- **핵심 기능:** 바른 자세 기준점 등록 → MediaPipe 기반 실시간 관절 추적 및 거북목 점수 산정 → 시스템 전체 오버레이 블러(회복 시 1초 내 복구) → Stripe 구독 + 통계 대시보드.
-- **비기능 요구사항:** 카메라 영상 디스크 저장 금지, CPU 5%/RAM 150MB 이하, Windows 10+/macOS 12+ 크로스플랫폼.
-- 자세한 기획 배경은 [PRD.md](./PRD.md), 기술 요구사항은 [TRD.md](./TRD.md) 참고.
+하루 대부분을 모니터 앞에서 보내는 사람에게 거북목은 피하기 어려운 직업병에 가깝다. 문제는 자세가 무너지는 순간을 본인이 잘 인지하지 못한다는 데 있다. 기존 스트레칭 알림 앱은 정해진 시간마다 알림을 띄우지만, 그 알림은 "지금 자세가 나쁜지"와는 무관해서 몰입 중인 사용자에게는 방해물일 뿐이고 결국 무시되거나 꺼진다.
 
-## 기술적 아키텍처
+BARUDA는 이 접근을 뒤집는다. "몇 시가 됐으니 스트레칭하라"가 아니라 "지금 이 순간 자세가 나쁘다"를 몸으로 즉시 느끼게 만드는 것이 핵심이다. 방법은 알림이 아니라 **화면 자체를 흐리게 만드는 것** — 알림은 무시할 수 있지만 화면이 점점 안 보이면 무시할 수 없다. 급격히 가리면 그 자체가 불쾌한 방해이므로, 자세가 무너지는 정도·시간에 비례해 서서히 흐려지고 자세가 돌아오면 1초 이내 즉시 복구되도록 설계했다.
 
-Electron 3-프로세스 모델로 동작하며, main 프로세스가 여러 렌더러 창을 IPC로 조율하는 허브-스포크 구조입니다.
+원칙은 두 가지다.
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                     Main Process (Node)                   │
-│  src/main/index.ts                                        │
-│  ├─ overlayWindow.ts   → 디스플레이별 오버레이 창 관리(Map)│
-│  ├─ miniBarWindow.ts   → 미니바 창 관리                    │
-│  ├─ postureStore.ts    → SQLite(better-sqlite3) 영속화     │
-│  └─ IPC 라우터 (ipcMain.on/handle)                         │
-└──────────────┬──────────────────────────┬─────────────────┘
-     contextBridge (preload)      contextBridge (preload)
-       │                                  │
-┌──────▼─────────────┐   ┌────────────────▼────────────────┐
-│  Main Window         │   │  Overlay Windows (N개, 모니터별) │
-│  (React SPA)          │   │  투명·frame 없음·클릭통과        │
-│  posture/ auth/        │   │  backdrop-filter: blur(Npx)     │
-│  dashboard/ billing/    │   └──────────────────────────────────┘
-└──────────────────────┘   ┌──────────────────────────────────┐
-                            │  MiniBar Window                  │
-                            │  56px 슬림 바, goodness 색상 표시 │
-                            └──────────────────────────────────┘
-```
+- **프라이버시**: 카메라 영상은 절대 디스크에 저장되거나 외부로 전송되지 않는다. 관절 좌표만 실시간 추출 후 즉시 폐기한다.
+- **업무 방해 최소화**: 알림창/소리 없이 화면 블러 하나로만 작동하며, 원할 때 미니바로 축소할 수 있다.
 
-| 레이어 | 기술 | 역할 |
+자세한 기획 배경은 [PRD.md](./PRD.md), 기술 요구사항은 [TRD.md](./TRD.md) 참고.
+
+## 핵심 기능
+
+- **기준점 등록** — 바른 자세 상태에서 관절(코/귀/어깨/엉덩이) 좌표를 저장. 절대 각도가 아니라 이 기준점 대비 변화량으로 점수를 매겨, 웹캠이 눈높이에 정확히 없어도 정확하게 동작한다.
+- **실시간 자세 인식** — MediaPipe Face Landmarker + Pose Landmarker를 함께 사용해 목/몸통 각도를 추적하고 0~100 점수로 환산.
+- **점진적 화면 블러** — 자세 점수에 비례해 시스템 전체(멀티 디스플레이 포함)에 블러가 걸리고, 자세가 회복되면 1초 이내 복구.
+- **카메라 미검지 처리** — 사람이 인식되지 않으면(자리 비움, 가려짐 등) 점수·포인트 적립이 즉시 멈추고 안내 문구가 표시된다.
+- **포인트/스트릭 시스템** — 자세를 일정 수준 이상 유지한 시간에 비례해 포인트가 적립되는 게이미피케이션 요소.
+- **주간 통계 + 캘린더** — 최근 7일 바른/나쁜 자세 비율을 차트로 보여주고, 날짜를 클릭하면 해당일 기록 확인 가능.
+- **미니바 모드** — 카메라 프리뷰 대신 화면 하단에 얇은 상태 바만 남기고, 자세 추적은 백그라운드에서 계속 동작.
+- **구독/결제** — Stripe 연동 구독 모델로 프리미엄 통계 기능 제공(코드는 구현되어 있으며 현재 UI에서는 비활성화 상태).
+
+## 화면 구성
+
+앱은 3개의 독립된 창으로 구성되며, 각 창은 별도 React 인스턴스로 동작하고 Main Process를 경유한 IPC로만 상태를 주고받는다.
+
+| 창 | 구성 | 설명 |
 |---|---|---|
-| 프레임워크 | Electron 39 + electron-vite | 3프로세스(main/preload/renderer) 빌드 파이프라인 |
-| Renderer UI | React 19 | 창마다 별도 HTML 엔트리(index/overlay/minibar) → 사실상 SPA 3개 |
-| ML 추론 | MediaPipe Tasks Vision (Face/Pose Landmarker, GPU delegate) | renderer 프로세스 내에서 로컬 추론, 서버 전송 없음 |
-| IPC | Electron ipcMain/ipcRenderer + contextBridge | 창 간 유일한 통신 수단 (전역 상태 공유 없음, 이벤트 기반) |
-| 로컬 영속화 | better-sqlite3 (WAL 모드) | 5분 버킷 통계, 동기 API라 메인 프로세스 블로킹 최소화 |
-| 인증/DB | Supabase JS SDK (renderer가 직접 호출) | RLS로 접근 제어, 별도 API 게이트웨이 없이 클라이언트-DB 직결 |
-| 결제 | NestJS 백엔드(`backend/`) + Stripe | 시크릿 키가 필요한 로직만 서버로 분리, renderer는 세션 생성 요청만 |
-| 창 렌더링 방식 | `backdropFilter` CSS + `setIgnoreMouseEvents` | OS 네이티브 블러 API 대신 웹 표준 CSS로 전체화면 오버레이 구현 |
+| **메인 창** | 카메라 프리뷰 + 자세 점수 바 + 헤더 아이콘(햄버거/선물/메일/미니바) | 기준점 등록, 실시간 점수 확인, 대시보드·문의·포인트 안내 진입점 |
+| **대시보드(사이드 패널)** | 주간 막대그래프 + 캘린더 | 헤더 햄버거 버튼으로 열리며 최근 7일 통계와 날짜별 기록을 확인 |
+| **오버레이 창** | 전체화면 투명·클릭통과 레이어 | 자세 불량 시 `backdrop-filter`로 화면을 블러 처리, 모니터마다 자동 생성 |
+| **미니바 창** | 화면 하단 56px 색상 바 | red↔yellow↔green으로 실시간 goodness 표시, 드래그 이동/클릭 복귀 |
+| **인증/결제 화면** | 로그인 폼, 구독 패널 | 구현은 완료되어 있으나 현재 `App.tsx`에서 렌더링하지 않음(무가입 체험 우선) |
 
-**구조적 특징**
+## 기술 스택
 
-1. **창 = 독립 렌더러, 상태 공유 없음** — main/overlay/minibar가 각각 별도 React 인스턴스로 뜨고, 상태는 오직 main 프로세스를 경유한 IPC 이벤트로만 동기화됩니다.
-2. **추론은 클라이언트에, 인증/DB도 클라이언트에, 결제만 서버로** — 백엔드 의존도가 낮은 구조. Supabase RLS를 신뢰 경계로 삼아 서버 로직을 최소화하고, 시크릿이 필요한 Stripe만 별도 NestJS 서버로 분리.
-3. **폴링형 파이프라인** — MediaPipe 추론이 350ms 재귀 타이머로 도는 폴링 루프이고, 결과가 IPC로 push되는 방식이라 "관찰 → 점수화 → 전파"가 고정 주기로 반복됩니다.
+- **런타임/빌드**: Electron 39, electron-vite, TypeScript
+- **UI**: React 19
+- **자세 인식**: MediaPipe Tasks Vision (Face Landmarker, Pose Landmarker — GPU delegate)
+- **로컬 저장소**: better-sqlite3 (WAL 모드)
+- **인증/DB**: Supabase JS SDK (클라이언트 직결, RLS로 접근 제어)
+- **결제**: Stripe + 별도 NestJS 백엔드(`backend/`, Stripe 시크릿 키/웹훅 처리 전용)
+- **배포**: electron-builder (Windows/macOS/Linux, GitHub Releases 타깃)
 
-## 데이터 흐름
+## 디자인 시스템
 
-1. **인식** — `src/renderer/src/posture/`에서 MediaPipe Face Landmarker + Pose Landmarker(`pose_landmarker_lite`, GPU delegate)를 350ms 주기로 구동해 코/귀/어깨/엉덩이 좌표를 추적.
-2. **점수 계산** — 얼굴 점수(코 낙하 비율, 카메라 전진 비율)와 자세 점수(목/몸통 각도)를 각각 기준점(baseline) 대비 delta로 0~100 산출 후 `max(faceScore, poseScore)` 채택, EMA 스무딩(α=0.5).
-3. **IPC 전송** — 점수가 갱신될 때마다 `overlay:set-blur`, `posture:report`를 main 프로세스로 전송.
-4. **Main 처리** — `overlay:set-blur`는 모든 오버레이 창에 브로드캐스트, `posture:report`는 SQLite에 기록(5분 버킷, `score < 40`을 bad로 판정, 샘플 간 5초 초과 gap은 클램프)하고 미니바 goodness를 갱신.
-5. **블러 렌더링** — 오버레이 창이 `overlay:blur` 이벤트를 받아 `backdropFilter`로 실제 블러 적용, 자세가 회복되면 1초 이내 복구.
+라이트 테마 기반의 미니멀한 UI를 사용한다.
 
-## 백엔드 구조 (`backend/`)
+- **배경/서피스**: 화이트(`#ffffff`) 배경, 옅은 보더(`#ececee`)
+- **액센트**: 인디고 계열(`#5b5bf5`), 그라디언트 강조(`linear-gradient(135deg, #5b5bf5, #8a5bf5)`)
+- **상태 색상**: 좋음(초록 `#2f9e6e`), 나쁨(빨강 계열 `#e0736b` / `#d64f37`), 경고(옐로 `#d9b45c`)
+- **자세 점수 바**: 빨강→노랑→초록 연속 그라데이션, 95% 이상(완벽 정렬) 시 초록 글로우 효과
+- **인터랙션 원칙**: 오버레이 창은 클릭 통과, 미니바는 최소 시각 요소(56px)로 존재감을 낮춤
 
-NestJS 기반 별도 서버로, Supabase 서비스 롤/Stripe 시크릿 키가 필요한 작업만 담당합니다.
-
-- `src/supabase/supabase.service.ts` — Supabase 클라이언트 래퍼
-- `src/billing/stripe.service.ts`, `billing.controller.ts`, `stripe-webhook.controller.ts` — Stripe 결제 세션 생성 및 웹훅 처리
-- `supabase/migrations/0001_init.sql` — `profiles`, `subscriptions` 테이블 + RLS 정책(본인 행만 읽기, 쓰기는 서비스 롤 전용)
-
-## 로컬 우선 설계
-
-- 카메라 영상/좌표 추론은 전부 renderer 프로세스 내부(로컬)에서만 수행, 디스크 저장이나 외부 전송 없음.
-- 인증/구독 상태 조회는 renderer가 Supabase JS SDK로 직접 호출(RLS로 접근 제어), 별도 API 게이트웨이 없음.
-- Stripe 시크릿 키가 필요한 결제 세션 생성만 별도 NestJS 백엔드(`backend/`)로 분리.
-
-## 현재 진행 상황
-
-핵심 자세감지·블러 기능(P0)은 구현 완료. 최근 커밋은 미니바 UI, 주간 자세 차트/캘린더, 스트릭 기반 포인트 적립(게이미피케이션), 빌드 산출물명(BARUDA)·GitHub Releases 설정 등 대시보드 다듬기와 배포 준비 단계에 있습니다. 남은 로드맵은 [TODO.yaml](./TODO.yaml) 참고.
-
-## 개발
+## 로컬 실행
 
 ```bash
 npm install
-cp .env.example .env   # VITE_MOCK_AUTH=true 기본값이면 Supabase/Stripe 계정 없이 실행 가능
+cp .env.example .env   # 기본값(VITE_MOCK_AUTH=true)이면 Supabase/Stripe 계정 없이 실행 가능
 npm run dev
 ```
 
-## 빌드
+빌드:
 
 ```bash
 npm run build:win   # Windows
@@ -94,11 +74,60 @@ npm run build:mac   # macOS
 npm run build:linux # Linux
 ```
 
-## 문서
+클라우드 백엔드(Supabase/Stripe)를 직접 연동하려면 `backend/supabase/migrations/0001_init.sql`을 Supabase 프로젝트에 적용하고, `backend/.env.example`을 채운 뒤 `backend/`에서 `npm install && npm run start:dev`로 별도 실행한다.
 
-- [PRD.md](./PRD.md) — 제품 요구사항 문서
-- [TRD.md](./TRD.md) — 기술 요구사항 문서
-- [TODO.yaml](./TODO.yaml) — 작업 항목 및 우선순위
+## 비즈니스 모델
+
+- **무료 체험 우선**: 회원가입 없이도 핵심 기능(자세 인식, 블러 피드백)을 전부 사용할 수 있도록 설계. 진입 장벽을 낮춰 초기 사용자 확보를 우선한다.
+- **구독(Freemium → Premium)**: Stripe 기반 월/년 구독으로 일간·주간 자세 점수 통계 대시보드와 상세 리포트를 프리미엄 기능으로 제공한다.
+- **인증/과금 분리 구조**: Supabase Auth로 계정을 식별하고, 구독 상태는 `subscriptions` 테이블(RLS로 본인 행만 조회)을 클라이언트가 직접 확인한다. 결제 세션 생성과 웹훅 처리만 별도 백엔드가 담당해 시크릿 키 노출을 차단한다.
+- **KPI (PRD 기준)**: 7일 리텐션 60% 이상, 프리미엄 구독자 대상 "자세 개선 체감" 응답 75% 이상, 무료→유료 전환율 4% 이상.
+
+## 개발 로드맵
+
+**완료 (P0 핵심 기능)**
+- Electron/React 크로스플랫폼 개발 환경 구축
+- 전체화면 클릭통과 블러 오버레이
+- MediaPipe 기반 랜드마크 추출 및 거북목 점수 산정
+- 점수 연동 점진적 블러 UX
+
+**완료 (P1)**
+- 로컬 SQLite 자세 타임라인 저장
+- Supabase Auth + Stripe 구독 웹훅 연동 (코드 완료, UI 미노출)
+
+**완료 (P2)**
+- 주간 통계 대시보드 + 캘린더
+
+**진행/향후**
+- 포인트/스트릭 게이미피케이션 고도화
+- 미니바 UX 개선
+- 로그인/구독 게이팅 재활성화 시점 결정
+- 코드 서명 및 정식 배포 파이프라인
+
+전체 작업 항목은 [TODO.yaml](./TODO.yaml) 참고.
+
+## 변경 이력
+
+- **기획** — PRD/TRD/TODO 작성, "화면 블러 기반 자세 교정"이라는 핵심 아이디어와 로컬 전용 프라이버시 원칙 확정
+- **뼈대 구축** — Electron + React + TypeScript 스캐폴딩, 전역 투명 클릭통과 오버레이 창 검증
+- **자세 인식 코어** — Face Landmarker 기반 거북목 점수 → Pose Landmarker 추가로 상체 기울임 반영 → 절대각도 대신 기준점 대비 변화량 점수로 전환
+- **저장/구독 기반** — 로컬 SQLite 저장, Supabase 인증 + Stripe 구독 백엔드 구축(이후 UX상 비활성화)
+- **UI 재정비** — 다크 스캐폴드 제거, 라이트 테마 + 미니멀 카드 UI로 전면 재설계
+- **리워드 시스템** — 스트릭 기반 포인트 적립 추가, StrictMode 이중 호출로 인한 포인트 중복 적립 버그 수정
+- **대시보드** — 주간 통계 차트 추가 → 이중 막대(바른/나쁜 자세) 스타일로 재설계, 날짜 클릭 캘린더 추가
+- **안정성 개선** — 카메라 미인식 시 마지막 인식값이 유지되던 문제 수정(즉시 상태 초기화)
+- **미니바** — 하단 축소 상태 바 추가. macOS `movable`/always-on-top 창 충돌을 마우스 이동 직접 추적 방식으로 우회
+- **문서화** — README를 실제 구현 상태 기준으로 재작성, 빌드 산출물명 BARUDA로 변경 및 GitHub Releases 타깃 설정
+
+전체 커밋 로그는 `git log` 참고.
+
+## 주의사항
+
+- 카메라 권한은 각 사용자 PC에서 최초 실행 시 macOS/Windows가 개별적으로 요청한다.
+- 코드 서명이 되어 있지 않아(Apple Developer 계정 필요) macOS에서 첫 실행 시 "확인되지 않은 개발자" 경고가 뜰 수 있다 — 우클릭 → 열기로 실행.
+- 로그인/구독 게이팅은 현재 UI에서 비활성화되어 있으며, 관련 코드는 `src/renderer/src/auth`, `src/renderer/src/billing`, `backend/`에 남아있다.
+- Stripe/결제 비용 구조를 감안한 수익 모델은 아직 확정 전이다.
+- 실제 Supabase/Stripe 키가 없는 상태에서는 클라우드 백엔드 흐름이 스캐폴딩 상태로만 존재한다.
 
 ## License
 
