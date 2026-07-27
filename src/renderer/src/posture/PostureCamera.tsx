@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useFaceLandmarker } from './useFaceLandmarker'
 import { usePoseLandmarker } from './usePoseLandmarker'
 import { usePostureScore } from './usePostureScore'
@@ -199,6 +199,14 @@ function PostureCamera(): React.JSX.Element {
     landmarks,
     angles
   )
+
+  // Registers the baseline the moment a face is first seen, instead of
+  // waiting on a manual tap — points/tracking should show up as soon as the
+  // app opens rather than gating on an extra setup step every launch.
+  useEffect(() => {
+    if (!baseline && landmarks) registerBaseline()
+  }, [baseline, landmarks, registerBaseline])
+
   const goodness = 100 - score
   const tracking = Boolean(baseline) && (Boolean(landmarks) || Boolean(angles))
   const isPerfect = tracking && goodness >= PERFECT_THRESHOLD
@@ -211,7 +219,7 @@ function PostureCamera(): React.JSX.Element {
         <div className={`camera-frame ${isPerfect ? 'perfect' : ''}`}>
           <video ref={videoRef} muted playsInline />
           <GuideOutline goodness={tracking ? goodness : 0} perfect={isPerfect} />
-          {cameraBlocked && <p className="camera-blocked-text">카메라가 닫혀 있습니다</p>}
+          {cameraBlocked && <p className="camera-blocked-text">카메라에 사람이 보이지 않습니다</p>}
           <button
             type="button"
             className={`blur-toggle-btn ${blurDisabled ? 'active' : ''}`}
@@ -236,7 +244,7 @@ function PostureCamera(): React.JSX.Element {
         </button>
 
         {error ? (
-          <p className="error-text">카메라를 사용할 수 없습니다</p>
+          <p className="error-text">카메라가 닫혀 있습니다</p>
         ) : tracking ? (
           <HealthBar goodness={goodness} />
         ) : (
