@@ -1,8 +1,9 @@
-import { BrowserWindow, screen, Display } from 'electron'
+import { BrowserWindow, screen, Display, desktopCapturer } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 
 const overlayWindows = new Map<number, BrowserWindow>()
+const lastBlurLevel = new Map<number, number>()
 
 function createOverlayForDisplay(display: Display): BrowserWindow {
   const overlay = new BrowserWindow({
@@ -73,8 +74,43 @@ export function createOverlayWindows(): void {
   screen.on('display-metrics-changed', syncOverlaysToDisplays)
 }
 
-export function setOverlayBlur(level: number): void {
-  for (const win of overlayWindows.values()) {
+// backdrop-filter on a transparent BrowserWindow only blurs the window's own
+// (empty) DOM content, not the desktop behind it — Chromium has no access to
+// pixels other processes drew. So instead we snapshot the display the moment
+// blur starts (rising edge from 0) and blur that static image with a CSS
+// filter, swapping it back out once posture recovers.
+async function captureDisplaySnapshot(display: Display): Promise<string | null> {
+  try {
+    const sources = await desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: {
+        width: Math.round(display.bounds.width / display.scaleFactor / 2),
+        height: Math.round(display.bounds.height / display.scaleFactor / 2)
+      }
+    })
+    const source =
+      sources.find((s) => s.display_id === String(display.id)) ?? sources[0] ?? null
+    if (!source || source.thumbnail.isEmpty()) return null
+    return source.thumbnail.toDataURL()
+  } catch (err) {
+    console.error('Failed to capture display for overlay blur:', err)
+    return null
+  }
+}
+
+export async function setOverlayBlur(level: number): Promise<void> {
+  const displays = screen.getAllDisplays()
+
+  for (const [id, win] of overlayWindows) {
+    const previousLevel = lastBlurLevel.get(id) ?? 0
+    if (level > 0 && previousLevel === 0) {
+      const display = displays.find((d) => d.id === id)
+      if (display) {
+        const snapshot = await captureDisplaySnapshot(display)
+        if (snapshot) win.webContents.send('overlay:snapshot', snapshot)
+      }
+    }
+    lastBlurLevel.set(id, level)
     win.webContents.send('overlay:blur', level)
   }
 }

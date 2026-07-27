@@ -66,7 +66,7 @@ Electron 3-프로세스 모델로 동작하며, Main Process가 여러 렌더러
 ┌──────▼─────────────┐   ┌────────────────▼────────────────┐
 │  Main Window         │   │  Overlay Windows (N개, 모니터별) │
 │  (React SPA)          │   │  투명·frame 없음·클릭통과        │
-│  posture/ auth/        │   │  backdrop-filter: blur(Npx)     │
+│  posture/ auth/        │   │  화면 스냅샷 + blur(Npx) 필터   │
 │  dashboard/ billing/    │   └──────────────────────────────────┘
 └──────────────────────┘   ┌──────────────────────────────────┐
                             │  MiniBar Window                  │
@@ -83,9 +83,11 @@ Electron 3-프로세스 모델로 동작하며, Main Process가 여러 렌더러
 | 로컬 영속화 | better-sqlite3 (WAL 모드) | 5분 버킷 통계, 동기 API라 메인 프로세스 블로킹 최소화 |
 | 인증/DB | Supabase JS SDK (renderer가 직접 호출) | RLS로 접근 제어, 별도 API 게이트웨이 없이 클라이언트-DB 직결 |
 | 결제 | NestJS 백엔드(`backend/`) + Stripe | 시크릿 키가 필요한 로직만 서버로 분리, renderer는 세션 생성 요청만 |
-| 창 렌더링 방식 | `backdropFilter` CSS + `setIgnoreMouseEvents` | OS 네이티브 블러 API 대신 웹 표준 CSS로 전체화면 오버레이 구현 |
+| 창 렌더링 방식 | `desktopCapturer` 스냅샷 + CSS `filter: blur()` | 아래 설명 참고 |
 
-**데이터 흐름**: 인식(MediaPipe, 350ms 주기) → 점수 계산(baseline 대비 delta, EMA 스무딩) → IPC 전송(`overlay:set-blur`, `posture:report`) → Main 처리(오버레이 브로드캐스트 + SQLite 기록 + 미니바 갱신) → 오버레이 창이 `backdropFilter`로 블러 렌더링(회복 시 1초 내 복구).
+**데이터 흐름**: 인식(MediaPipe, 350ms 주기) → 점수 계산(baseline 대비 delta, EMA 스무딩) → IPC 전송(`overlay:set-blur`, `posture:report`) → Main 처리(오버레이 브로드캐스트 + SQLite 기록 + 미니바 갱신) → 오버레이 창이 블러 이미지를 렌더링(회복 시 1초 내 복구).
+
+**블러를 실제로 어떻게 구현했는가**: 처음에는 투명 오버레이 창에 CSS `backdrop-filter`만 적용했는데, 실제로는 아무것도 흐려지지 않는 문제가 있었다. Chromium의 `backdrop-filter`는 같은 웹페이지 DOM 안에서 그 요소 뒤에 있는 콘텐츠만 블러할 수 있고, 창 밖의 데스크톱(다른 프로세스가 그린 픽셀)에는 접근할 수 없기 때문이다. 그래서 방식을 바꿔, 자세가 무너지기 시작하는 순간(blur 0→양수 전이 시점)에 `desktopCapturer`로 해당 디스플레이를 한 번 캡처해 오버레이 창에 정적 이미지로 전달하고, 그 이미지에 CSS `filter: blur(Npx)`를 걸어 보여준다. 자세가 회복되면 이미지가 사라지고 다시 투명 상태로 돌아간다(`src/main/overlayWindow.ts`, `src/renderer/src/overlay/OverlayApp.tsx`). macOS에서는 이 캡처에 화면 기록 권한이 필요하다.
 
 **설계 특징**
 
@@ -163,12 +165,14 @@ npm run build:linux # Linux
 - **안정성 개선** — 카메라 미인식 시 마지막 인식값이 유지되던 문제 수정(즉시 상태 초기화)
 - **미니바** — 하단 축소 상태 바 추가. macOS `movable`/always-on-top 창 충돌을 마우스 이동 직접 추적 방식으로 우회
 - **문서화** — README를 실제 구현 상태 기준으로 재작성, 빌드 산출물명 BARUDA로 변경 및 GitHub Releases 타깃 설정
+- **블러 렌더링 버그 수정** — 투명 창 `backdrop-filter`가 실제로는 데스크톱을 전혀 흐리지 못하는 문제를 발견, `desktopCapturer` 스냅샷 + CSS `filter: blur()` 방식으로 교체
 
 전체 커밋 로그는 `git log` 참고.
 
 ## 주의사항
 
 - 카메라 권한은 각 사용자 PC에서 최초 실행 시 macOS/Windows가 개별적으로 요청한다.
+- 화면 블러는 디스플레이를 캡처(`desktopCapturer`)해 구현하므로, macOS에서는 "화면 기록" 권한도 별도로 허용해야 블러가 표시된다.
 - 코드 서명이 되어 있지 않아(Apple Developer 계정 필요) macOS에서 첫 실행 시 "확인되지 않은 개발자" 경고가 뜰 수 있다 — 우클릭 → 열기로 실행.
 - 로그인/구독 게이팅은 현재 UI에서 비활성화되어 있으며, 관련 코드는 `src/renderer/src/auth`, `src/renderer/src/billing`, `backend/`에 남아있다.
 - Stripe/결제 비용 구조를 감안한 수익 모델은 아직 확정 전이다.
